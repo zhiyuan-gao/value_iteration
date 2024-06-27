@@ -1,6 +1,9 @@
 import numpy as np
 import torch
-
+import sys
+import os
+current_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.join(current_dir, '..'))
 from deep_differential_network.utils import jacobian
 from value_iteration.cost_functions import ArcTangent, SineQuadraticCost
 CUDA_AVAILABLE = torch.cuda.is_available()

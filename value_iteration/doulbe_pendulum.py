@@ -55,7 +55,9 @@ class DoulbePendulum(BaseSystem):
         self.x_start_var = torch.tensor([1.e-3, 5.e-2, 1.e-6, 1.e-6])
         self.x_lim = torch.tensor([2*np.pi, 2*np.pi, 15., 15.])
         self.x_penalty = torch.tensor([10, 5., 1., 1])
-        self.x_init = torch.tensor([0, 0, 0, 0])
+
+        # 10 degree angle error for initial sampling
+        self.x_init = torch.tensor([0.17, 0.17, 0.01, 0.01])
         self.u_lim = torch.tensor([6., 0.])
 
         """
@@ -207,12 +209,12 @@ class DoulbePendulum(BaseSystem):
         a = torch.stack([
             torch.tensor(a_la(*sample.squeeze().detach().cpu().numpy())).reshape(self.n_state, 1).to(x.device)
             for sample in x
-        ])
+        ]).float()
 
         B = torch.stack([
             torch.tensor(B_la(*sample.squeeze().detach().cpu().numpy())).reshape(self.n_state, self.n_act).to(x.device)
             for sample in x
-        ])
+        ]).float()
 
 
         assert a.shape == (n_samples, self.n_state, 1)
@@ -228,7 +230,7 @@ class DoulbePendulum(BaseSystem):
             dadx = torch.stack([
                 torch.tensor(dadx_la(*sample.squeeze().detach().cpu().numpy())).reshape(self.n_state, self.n_state).to(x.device)
                 for sample in x
-            ])
+            ]).float()
 
 
 
@@ -244,7 +246,7 @@ class DoulbePendulum(BaseSystem):
             dBdx = torch.stack([
                 torch.tensor(dBdx_la(*sample.squeeze().detach().cpu().numpy())).reshape(self.n_state, self.n_state, self.n_act).to(x.device)
                 for sample in x
-            ])
+            ]).float()
             assert dadx.shape == (n_samples, self.n_state, self.n_state,)
             assert dBdx.shape == (n_samples, self.n_state, self.n_state, self.n_act)
         
@@ -300,11 +302,11 @@ class DoulbePendulum(BaseSystem):
         dadp = torch.stack([
             torch.tensor(dadp_la(*sample.squeeze().detach().cpu().numpy())).reshape(self.n_parameter, self.n_state).to(x.device)
             for sample in x
-        ])
+        ]).float()
         dBdp = torch.stack([
             torch.tensor(dBdp_la(*sample.squeeze().detach().cpu().numpy())).reshape(self.n_parameter, self.n_state, self.n_act).to(x.device)
             for sample in x
-        ])
+        ]).float()
 
         # dadp = torch.stack([torch.tensor(dadp_la(*sample.squeeze().detach().numpy())).reshape(self.n_parameter, self.n_state) for sample in x])
         # dBdp = torch.stack([torch.tensor(dBdp_la(*sample.squeeze().detach().numpy())).reshape(self.n_parameter, self.n_state, self.n_act) for sample in x])

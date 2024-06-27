@@ -117,6 +117,18 @@ def sample_data(T, n_seeds, val_fun, hyper, sys, config):
 
             # Compute next step:
             xd = (a[-1] + torch.matmul(B[-1], u[-1] + n_u[i])).view(-1, sys.n_state, 1)
+            # 打印 x, xd, 和 n_x 的形状
+            print(f"x shape: {len(x)}")
+            print(f"xd shape: {len(xd)}")
+            print(f"n_x shape: {n_x.shape}")
+
+            # 打印 dt 的形状和类型
+            print(f"dt: {dt}, type: {type(dt)}")
+
+            # 打印 x[-1], dt * xd 和 n_x[i] 的形状
+            print(f"x[-1] shape: {x[-1].shape}")
+            print(f"(dt * xd) shape: {(dt * xd).shape}")
+            print(f"n_x[i] shape: {n_x[i].shape}")
             xn = x[-1] + dt * xd + n_x[i]
 
             # Compute dVdt

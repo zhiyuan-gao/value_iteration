@@ -58,7 +58,7 @@ if __name__ == "__main__":
         'state_cost': '25.e+0, 1.e+0, 5.e-1, 1.e-1',
         'action_cost': '1.e-1,1.e-1',
         'eps': 0.80,  # eps = 1 => \gamma = 1
-        'dt': 1. / 125.,
+        'dt': 1. / 500.,
         'T': 5.,
 
         # Network:
