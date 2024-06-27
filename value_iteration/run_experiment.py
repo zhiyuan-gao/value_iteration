@@ -54,6 +54,8 @@ def run_experiment(hyper):
         mat_shape = (150, 150)
     elif system.name.split("_")[0] == "Cartpole":
         mat_shape = (1, 150, 1, 150)
+    elif system.name.split("_")[0] == "DoulbePendulum":
+        mat_shape = (1, 150, 1, 150)
     else:
         raise ValueError
 

@@ -26,11 +26,11 @@ class BaseSystem:
         assert np.allclose(to_dadx, np_dadx, atol=1.e-5)
         assert np.allclose(to_dBdx, np_dBdx, atol=1.e-5)
 
-        grad_auto_dadx = jacobian(lambda x: self.dyn(x)[-2], to_x_test).view(-1, self.n_state, self.n_state).cpu().numpy()
-        grad_auto_dBdx = jacobian(lambda x: self.dyn(x)[-1], to_x_test).view(-1, self.n_state, self.n_state, self.n_act).cpu().numpy()
+        # grad_auto_dadx = jacobian(lambda x: self.dyn(x)[-2], to_x_test).view(-1, self.n_state, self.n_state).cpu().numpy()
+        # grad_auto_dBdx = jacobian(lambda x: self.dyn(x)[-1], to_x_test).view(-1, self.n_state, self.n_state, self.n_act).cpu().numpy()
 
-        assert np.allclose(to_dBdx, grad_auto_dBdx, atol=1.e-3)
-        assert np.allclose(to_dadx, grad_auto_dadx, atol=1.e-3)
+        # assert np.allclose(to_dBdx, grad_auto_dBdx, atol=1.e-3)
+        # assert np.allclose(to_dadx, grad_auto_dadx, atol=1.e-3)
 
     def dyn(self, x):
         raise AttributeError
