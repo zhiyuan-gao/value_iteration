@@ -58,7 +58,7 @@ class DoulbePendulum(BaseSystem):
 
         # 10 degree angle error for initial sampling
         self.x_init = torch.tensor([0.17, 0.17, 0.01, 0.01])
-        self.u_lim = torch.tensor([6., 0.])
+        self.u_lim = torch.tensor([6., 0.5])
 
         """
         Parameters

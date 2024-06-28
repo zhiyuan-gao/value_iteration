@@ -69,7 +69,7 @@ def sample_data(T, n_seeds, val_fun, hyper, sys, config):
         xi_u_alpha = config.get('u_noise', 0.0) * sys.u_lim
         dist_u_noise = torch.distributions.multivariate_normal.MultivariateNormal(mu_u, covariance_matrix=eye_u)
         n_u = dist_u_noise.sample((n_steps, n_seeds)).float().to(device).view(n_steps, n_seeds, sys.n_act, 1)
-        n_u = xi_u_alpha.to(n_u.device) / 1.96 * exp_minus * torch.cumsum(exp_plus * np.sqrt(dt) * n_u, dim=0)
+        n_u = xi_u_alpha.to(n_u.device).view(1, 1, sys.n_act, 1) / 1.96 * exp_minus * torch.cumsum(exp_plus * np.sqrt(dt) * n_u, dim=0)
 
         x, a, V, dVdx, dVdt, B, u, r = [], [], [], [], [], [], [], []
 
@@ -118,17 +118,17 @@ def sample_data(T, n_seeds, val_fun, hyper, sys, config):
             # Compute next step:
             xd = (a[-1] + torch.matmul(B[-1], u[-1] + n_u[i])).view(-1, sys.n_state, 1)
             # 打印 x, xd, 和 n_x 的形状
-            print(f"x shape: {len(x)}")
-            print(f"xd shape: {len(xd)}")
-            print(f"n_x shape: {n_x.shape}")
+            # print(f"x shape: {len(x)}")
+            # print(f"xd shape: {len(xd)}")
+            # print(f"n_x shape: {n_x.shape}")
 
-            # 打印 dt 的形状和类型
-            print(f"dt: {dt}, type: {type(dt)}")
+            # # 打印 dt 的形状和类型
+            # print(f"dt: {dt}, type: {type(dt)}")
 
-            # 打印 x[-1], dt * xd 和 n_x[i] 的形状
-            print(f"x[-1] shape: {x[-1].shape}")
-            print(f"(dt * xd) shape: {(dt * xd).shape}")
-            print(f"n_x[i] shape: {n_x[i].shape}")
+            # # 打印 x[-1], dt * xd 和 n_x[i] 的形状
+            # print(f"x[-1] shape: {x[-1].shape}")
+            # print(f"(dt * xd) shape: {(dt * xd).shape}")
+            # print(f"n_x[i] shape: {n_x[i].shape}")
             xn = x[-1] + dt * xd + n_x[i]
 
             # Compute dVdt
@@ -162,4 +162,5 @@ def sample_data(T, n_seeds, val_fun, hyper, sys, config):
 
         out_tra = [xi for xi in [x, u, r, R, V, dVdx, dVdt]]
         out_flat = (x_flat, a_flat, dadx_flat, B_flat, dBdx_flat)
+        print('sample_data done!')
         return out_flat, out_tra

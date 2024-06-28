@@ -103,6 +103,12 @@ def update_value_function(step_i, value_fun_tar, system, mem_train, hyper, write
                 xi_u = float(hyper["robust"]) * norm(z_u) * xi_u_scale[n]
 
                 # Compute adversarial observation-noise:
+                print(dBjdx.shape, uj_star.shape)
+                print(uj_star.unsqueeze(-1).shape)
+                print(torch.matmul(dBjdx, uj_star.unsqueeze(-1)).shape)
+                print(torch.matmul(dBjdx, uj_star.unsqueeze(-1)).shape)
+                print(torch.matmul(dBjdx, uj_star.unsqueeze(-1)).squeeze(-1).shape)
+                print(dajdx.shape, dVjdx.shape)
                 z_o = -torch.matmul(torch.matmul(dBjdx, uj_star.unsqueeze(-1)).squeeze(-1) + dajdx, dVjdx)
                 xi_o = float(hyper["robust"]) * norm(z_o) * xi_o_scale[n]
 
