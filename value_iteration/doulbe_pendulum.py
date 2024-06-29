@@ -154,11 +154,39 @@ class DoulbePendulum(BaseSystem):
         # q = smp.Matrix([q1, q1])
         # x = smp.Matrix([q1, q2, qd1, qd2])
         self.symbolic_a = q_dot.col_join(invM * (-self.plant.C*q_dot +self.plant.G - self.plant.F))
-
-        # plant.B is Actuator selection Matrix, same as D in the formulars.
-
         self.symbolic_B = smp.Matrix([[0., 0.], [0., 0.]]).col_join(invM* self.plant.B)
 
+        assert self.symbolic_a.shape == (self.n_state, 1)
+        assert self.symbolic_B.shape == (self.n_state, self.n_act)
+
+        self.symbolic_dadxT = self.symbolic_a.jacobian(self.symbol_x).T
+        assert self.symbolic_dadxT.shape == (self.n_state, self.n_state)
+
+        self.symbolic_dBdxT = smp.MutableDenseNDimArray.zeros(self.n_state, self.n_state, self.n_act)
+        for i in range(self.n_state):
+            for j in range(self.n_state):
+                for k in range(self.n_act):
+                    self.symbolic_dBdxT[i, j, k] = smp.diff(self.symbolic_B[j, k], self.symbol_x[i])
+
+
+        self.symbolic_dadpT = self.symbolic_a.jacobian(self.symbol_theta).T
+        assert self.symbolic_dadpT.shape == (self.n_parameter, self.n_state)
+
+        self.symbolic_dBdpT = smp.MutableDenseNDimArray.zeros(self.n_parameter, self.n_state, self.n_act)
+        for i in range(self.n_parameter):
+            for j in range(self.n_state):
+                for k in range(self.n_act):
+                    self.symbolic_dBdpT[i, j, k] = smp.diff(self.symbolic_B[j, k], self.symbol_theta[i])
+
+        para_dict = theta_to_dict(self.theta)
+        self.dadp_x = self.symbolic_dadpT.subs(para_dict)
+
+        # bring theta to symbolic_dBdpT, since MutableDenseNDimArray can not be used in subs
+        self.dBdp_x = smp.MutableDenseNDimArray.zeros(self.n_parameter, self.n_state, self.n_act)
+        for i in range(self.n_parameter):
+            for j in range(self.n_state):
+                for k in range(self.n_act):
+                    self.dBdp_x[i, j, k] = self.symbolic_dBdpT[i, j, k].subs(para_dict)
 
         # Compute Linearized System:
         out = self.dyn(self.x_target, gradient=True)
@@ -168,13 +196,9 @@ class DoulbePendulum(BaseSystem):
         # Test Dynamics:
         self.check_dynamics()
 
-        # to_x_test = torch.distributions.uniform.Uniform(-self.x_lim, self.x_lim).sample((10,))
-        # to_x_test = to_x_test.view(-1, self.n_state, 1).float().to(self.theta.device)
-        # np_x_test = to_x_test.cpu().numpy()
-        # out2 = self.grad_dyn_theta(np_x_test)
-
         self.device = None
         DoulbePendulum.cuda(self) if cuda else DoulbePendulum.cpu(self)
+        print("Double Pendulum System Initialized!")
 
     def dyn(self, x, dtheta=None, gradient=False):
 
@@ -203,7 +227,6 @@ class DoulbePendulum(BaseSystem):
         B_la = lambdify(self.symbol_x, B_x)
 
         # a = torch.stack([torch.tensor(a_la(*sample.squeeze().detach().numpy())).reshape(self.n_state, 1) for sample in x])
-
         # B = torch.stack([torch.tensor(B_la(*sample.squeeze().detach().numpy())).reshape(self.n_state, self.n_act) for sample in x])
 
         a = torch.stack([
@@ -223,28 +246,27 @@ class DoulbePendulum(BaseSystem):
 
         if gradient:
 
-            dadx_x = a_x.jacobian(self.symbol_x)
-            dadx_la = lambdify(self.symbol_x, dadx_x)
+            dadxT_x = self.symbolic_dadxT.subs(para_dict)
+            dadxT_la = lambdify(self.symbol_x, dadxT_x)
 
             # dadx = torch.stack([torch.tensor(dadx_la(*sample.squeeze().detach().numpy())).reshape(self.n_state, self.n_state) for sample in x])
             dadx = torch.stack([
-                torch.tensor(dadx_la(*sample.squeeze().detach().cpu().numpy())).reshape(self.n_state, self.n_state).to(x.device)
+                torch.tensor(dadxT_la(*sample.squeeze().detach().cpu().numpy())).reshape(self.n_state, self.n_state).to(x.device)
                 for sample in x
             ]).float()
 
+            # bring theta to symbolic_dBdxT, since MutableDenseNDimArray can not be used in subs
+            dBdxT_x = smp.MutableDenseNDimArray.zeros(self.n_state, self.n_state, self.n_act)
+            for i in range(self.n_state):
+                for j in range(self.n_state):
+                    for k in range(self.n_act):
+                        dBdxT_x[i, j, k] = self.symbolic_dBdpT[i, j, k].subs(para_dict)
 
-
-
-            dBdx_x = smp.MutableDenseNDimArray.zeros(self.n_state, self.n_state, self.n_act)
-            for i in range(4):
-                for j in range(2):
-                    for k in range(4):
-                        dBdx_x[i, k, j] = smp.diff(B_x[i, j], self.symbol_x[k])
-            dBdx_la = lambdify(self.symbol_x, dBdx_x)
+            dBdxT_la = lambdify(self.symbol_x, dBdxT_x)
 
             # dBdx = torch.stack([torch.tensor(dBdx_la(*sample.squeeze().detach().numpy())).reshape(self.n_state, self.n_state, self.n_act) for sample in x])
             dBdx = torch.stack([
-                torch.tensor(dBdx_la(*sample.squeeze().detach().cpu().numpy())).reshape(self.n_state, self.n_state, self.n_act).to(x.device)
+                torch.tensor(dBdxT_la(*sample.squeeze().detach().cpu().numpy())).reshape(self.n_state, self.n_state, self.n_act).to(x.device)
                 for sample in x
             ]).float()
             assert dadx.shape == (n_samples, self.n_state, self.n_state,)
@@ -264,41 +286,10 @@ class DoulbePendulum(BaseSystem):
         x = x.view(-1, self.n_state, 1)
         n_samples = x.shape[0]
 
-        symbol_dadp = self.symbolic_a.jacobian(self.symbol_theta)
-        
-        # torch.zeros(n_samples, self.n_parameter, self.n_state, self.n_act).to(x.device)
-        symbol_dBdp = smp.MutableDenseNDimArray.zeros(self.n_parameter, self.n_state, self.n_act)
-        for i in range(self.n_state):
-            for j in range(self.n_act):
-                for k in range(self.n_parameter):
-                    symbol_dBdp[k, i, j] = smp.diff(self.symbolic_B[i, j], self.symbol_theta[k])
+        dadp_la = lambdify(self.symbol_x, self.dadp_x)
+        dBdp_la = lambdify(self.symbol_x, self.dBdp_x)
 
-
-        para_dict = theta_to_dict(self.theta)
-
-        # bring theta to symbol_dadp
-        dadp_x = symbol_dadp.subs(para_dict)
-
-        # bring theta to symbol_dBdp, since MutableDenseNDimArray can not be used in subs
-        dBdp_x = smp.MutableDenseNDimArray.zeros(self.n_parameter, self.n_state, self.n_act)
-        for k in range(self.n_parameter):
-            for i in range(self.n_state):
-                for j in range(self.n_act):
-                    dBdp_x[k, i, j] = symbol_dBdp[k, i, j].subs(para_dict)
-        
-
-        dadp_la = lambdify(self.symbol_x, dadp_x)
-        dBdp_la = lambdify(self.symbol_x, dBdp_x)
-
-        # dadp = torch.zeros(n_samples, self.n_parameter, self.n_state).to(x.device)
-        # dadp[:, :, self.n_dof:, ] = (torch.matmul(dinvHdp, f - n) + torch.matmul(invH_4d, dfdp - dndp)).view(-1, self.n_parameter, self.n_dof)
-
-        # dBdp = torch.zeros(n_samples, self.n_parameter, self.n_state, self.n_act).to(x.device)
-        # dBdp[:, :, self.n_dof:, ] = dinvHdp[:, :, :, :self.n_act]
-
-        # dBdx = np.zeros((n_samples, self.n_state, self.n_state, self.n_act))
-        # sample_test = x[0]
-        # test_result = torch.tensor(dBdp_la(*sample_test.squeeze().detach().numpy()))
+        # bring x to dadp and dBdp
         dadp = torch.stack([
             torch.tensor(dadp_la(*sample.squeeze().detach().cpu().numpy())).reshape(self.n_parameter, self.n_state).to(x.device)
             for sample in x
