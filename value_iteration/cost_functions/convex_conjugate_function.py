@@ -186,39 +186,58 @@ class HyperbolicTangent(ConvexConjugateFunction):
 
 class ArcTangent(ConvexConjugateFunction):
     def __init__(self, alpha=+1., beta=+1.0):
-        self.n = 1
+        if isinstance(alpha, float):
+            self.n = 1
+        elif isinstance(alpha, np.ndarray):
+            self.n = alpha.shape[0]
+        elif isinstance(alpha, torch.Tensor):
+            self.n = alpha.shape[0]
+
+        else:
+            raise ValueError("alpha must be either a float, numpy.ndarray or torch.Tensor, but is type {0}.".format(type(alpha)))   
+
         self.a = alpha
         self.b = beta
-        self.domain = (-np.abs(alpha), +np.abs(alpha))
+        # self.domain = (-np.abs(alpha), +np.abs(alpha))
         self.convex_domain = (-10.0, +10.0)
-        assert self.a >= self.domain[0] and self.a <= self.domain[1]
+        # # assert self.a >= self.domain[0] and self.a <= self.domain[1]
+        
+        # assert np.all(self.a >= self.convex_domain[0]) and np.all(\
+        #     self.a <= self.convex_domain[1]), "All elements of a must be within the convex domain."
 
         # Add for numerical stability
         self.a += 1.e-3
 
         # Compute Offset:
         self.off = 0.0
-        self.off = -self(np.zeros(1))
+        # self.off = -self(np.zeros(self.n))
 
     def __call__(self, x):
         if isinstance(x, np.ndarray):
             assert np.all(np.abs(x) <= self.a)
-
             shape = x.shape
+
             x = x.reshape((-1, self.n, 1))
             g = -2.0 * self.b * self.a / np.pi * np.log(np.clip(np.cos(np.pi / (2. * self.a) * x), 0.0, 1.0)).reshape(shape)
+
+            if self.n > 1:
+                g = np.sum(g, axis=1,keepdims=True)
+            print(g.shape,'g')
 
         elif isinstance(x, torch.Tensor):
             x = torch.clamp(x, -self.a, self.a)
             assert torch.all(torch.abs(x) <= self.a)
 
             shape = x.shape
+            print(shape)
             x = x.view(-1, self.n, 1)
             g = -2.0 * self.b * self.a / np.pi * torch.log(torch.clamp(torch.cos(np.pi / (2. * self.a) * x), 0.0, 1.0)).view(shape)
-
+            print(g.shape,'g')
+            if self.n > 1:
+                g = torch.sum(g, axis=1,keepdim=True)
         else:
             raise ValueError("x must be either an numpy.ndarray or torch.Tensor, but is type {0}.".format(type(x)))
-
+        print(g.shape,'g')
         return g
 
     def grad(self, x):
@@ -228,6 +247,9 @@ class ArcTangent(ConvexConjugateFunction):
             shape = x.shape
             x = x.reshape((-1, self.n, 1))
             g_grad = self.b * np.tan(np.pi/(2.*self.a) * x).reshape(shape)
+            # if self.n > 1:
+            #     g_grad = np.sum(g_grad, axis=1,keepdims=True)
+
 
         elif isinstance(x, torch.Tensor):
             assert torch.all(torch.abs(x) <= self.a)
@@ -235,6 +257,8 @@ class ArcTangent(ConvexConjugateFunction):
             shape = x.shape
             x = x.view(-1, self.n, 1)
             g_grad = self.b * torch.tan(np.pi/(2.*self.a) * x).view(shape)
+            # if self.n > 1:
+            #     g_grad = torch.sum(g_grad, axis=1,keepdim=True)
 
         else:
             raise ValueError("x must be either an numpy.ndarray or torch.Tensor, but is type {0}.".format(type(x)))
@@ -248,6 +272,8 @@ class ArcTangent(ConvexConjugateFunction):
             g_star = self.a / np.pi * (2. * x * np.arctan(x/self.b)
                                        - self.b * np.log(self.b**2. + x**2.)
                                        + self.b * np.log(self.b**2)).reshape(shape)
+            if self.n > 1:
+                g_star = np.sum(g_star, axis=1,keepdims=True)
 
         elif isinstance(x, torch.Tensor):
             shape = x.shape
@@ -255,6 +281,8 @@ class ArcTangent(ConvexConjugateFunction):
             g_star = self.a / np.pi * (2. * x * torch.atan(x/self.b)
                                        - self.b * torch.log(self.b**2. + x**2.)
                                        + self.b * torch.log(torch.tensor(self.b**2))).view(shape)
+            if self.n > 1:
+                g_star = torch.sum(g_star, axis=1,keepdim=True)
 
         else:
             raise ValueError("x must be either an numpy.ndarray or torch.Tensor, but is type {0}.".format(type(x)))
@@ -307,6 +335,8 @@ def convex_conjugate_test(fun, verbose=True, plot=True):
     y_torch = torch.from_numpy(y).float()
 
     g = fun(x)
+    print(g.shape,'g')
+    print(x.shape,'x')
     g_star = fun.convex_conjugate(y)
     g_torch = fun(x_torch).numpy()
     g_star_torch = fun.convex_conjugate(y_torch).numpy()

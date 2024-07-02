@@ -113,6 +113,7 @@ def sample_data(T, n_seeds, val_fun, hyper, sys, config):
             u.append(torch.min(torch.max(ui, -u_lim), u_lim))
 
             # Compute reward:
+            print('u[-1]',u[-1].shape)
             r.append(-dt * sys.rwd(x[-1], u[-1]))
 
             # Compute next step:

@@ -58,7 +58,7 @@ if __name__ == "__main__":
         'state_cost': '25.e+0, 1.e+0, 5.e-1, 1.e-1',
         'action_cost': '1.e-1,1.e-1',
         'eps': 0.80,  # eps = 1 => \gamma = 1
-        'dt': 1. / 500.,
+        'dt': 1. / 5.,
         'T': 5.,
 
         # Network:
@@ -73,10 +73,10 @@ if __name__ == "__main__":
 
         # Samples
         'n_iter': 250,
-        'eval_minibatch': 256 * 200,
+        'eval_minibatch': 256 * 1,
         'test_minibatch': 256 * 20,
         'n_minibatch': 512,
-        'n_batches': 200,
+        'n_batches': 2,
 
         # Network Optimization
         'max_epoch': 20,
@@ -86,7 +86,7 @@ if __name__ == "__main__":
 
         # Lambda Traces
         'trace_weight_n': 1.e-4,
-        'trace_lambda': 0.90,
+        'trace_lambda': 0.10,
 
         # Exploration:
         'x_noise': 1.e-6,

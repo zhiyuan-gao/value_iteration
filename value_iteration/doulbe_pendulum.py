@@ -53,7 +53,7 @@ class DoulbePendulum(BaseSystem):
         self.x_target = torch.tensor([np.pi, 0.0, 0.0, 0.0])
         self.x_start = torch.tensor([0.0, 0., 0.0, 0.0])
         self.x_start_var = torch.tensor([1.e-3, 5.e-2, 1.e-6, 1.e-6])
-        self.x_lim = torch.tensor([2*np.pi, 2*np.pi, 15., 15.])
+        self.x_lim = torch.tensor([np.pi, np.pi, 15., 15.])
         self.x_penalty = torch.tensor([10, 5., 1., 1])
 
         # 10 degree angle error for initial sampling
@@ -334,6 +334,7 @@ class DoulbePendulumLogCos(DoulbePendulum):
         # Create the dynamics:
         super(DoulbePendulumLogCos, self).__init__(cuda=cuda, **kwargs)
         self.u_lim = torch.tensor([6., 0])
+        device = torch.device("cuda" if cuda else "cpu")
 
         # Create the Reward Function:
         assert Q.size == self.n_state and np.all(Q > 0.0)
@@ -346,8 +347,10 @@ class DoulbePendulumLogCos(DoulbePendulum):
         self.q = BarrierCost(self._q,  self.x_penalty, cuda)
 
         # Determine beta s.t. the curvature at u = 0 is identical to 2R
-        beta = 4. * self.u_lim[0] ** 2 / np.pi * self.R
-        self.r = ArcTangent(alpha=self.u_lim.numpy()[0], beta=beta.numpy()[0, 0])
+        beta = 4. * self.u_lim ** 2 / np.pi * self.R
+        # beta = torch.tensor([40,40]) 
+        self.u_lim = self.u_lim.to(device)
+        self.r = ArcTangent(alpha=self.u_lim, beta=beta.numpy()[0, 0])
 
     def rwd(self, x, u):
         return self.q(x) + self.r(u)
