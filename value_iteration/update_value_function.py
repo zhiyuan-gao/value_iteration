@@ -92,10 +92,6 @@ def update_value_function(step_i, value_fun_tar, system, mem_train, hyper, write
 
                 # Compute the reward:
                 r_j = -hyper['dt'] * (system.q(xj) + system.r(uj_star))
-                # print('uj_star',uj_star.shape) 
-                # print('system.q(xj) ',system.q(xj).shape)  # torch.Size([128, 1, 1])
-                # print('system.r',system.r(uj_star).shape)  #torch.Size([128, 2, 1])
-                # print('r_j', r_j.shape)  #torch.Size([128, 2, 1])
                 r = r + hyper["gamma"] ** n * r_j
 
                 # Compute adversarial state-noise:
@@ -107,12 +103,6 @@ def update_value_function(step_i, value_fun_tar, system, mem_train, hyper, write
                 xi_u = float(hyper["robust"]) * norm(z_u) * xi_u_scale[n]
 
                 # Compute adversarial observation-noise:
-                # print(dBjdx.shape, uj_star.shape)  #torch.Size([25600, 4, 4, 2]) torch.Size([25600, 2, 1])
-                # print(uj_star.unsqueeze(-1).shape) #torch.Size([25600, 2, 1, 1])
-                # print(torch.matmul(dBjdx, uj_star.unsqueeze(-1)).shape)
-                # print(torch.matmul(dBjdx, uj_star.unsqueeze(-1)).squeeze(-1).shape)
-                # print(dajdx.shape, dVjdx.shape)
-
                 # torch.matmul(dBjdx, uj_star.unsqueeze(-1)).squeeze(-1)
                 z_o = -torch.matmul((uj_star.permute(0, 2, 1).unsqueeze(1) * dBjdx).sum(dim=-1)+ dajdx, dVjdx)
                 # z_o = -torch.matmul(torch.matmul(dBjdx, uj_star.unsqueeze(-1)).squeeze(-1) + dajdx, dVjdx)
@@ -141,19 +131,12 @@ def update_value_function(step_i, value_fun_tar, system, mem_train, hyper, write
 
                 # Compute the value function of the next state:
                 Vn, dVndx, un_star, dundx_star = policy(xn, Bn, system.r, value_fun_tar)
-                print('r', r.shape)  #torch.Size([128, 2, 1])
-                print('Vn',Vn.shape)  #torch.Size([128, 1, 1])
-                print('gamma', hyper["gamma"])
-                print('v0_tar shape',torch.clamp(r + hyper['gamma'] ** (n+1) * Vn, max=0.0).shape)  #torch.Size([128, 2, 1])
 
                 # Compute the target value function:
                 V0_tar.append(torch.clamp(r + hyper['gamma'] ** (n+1) * Vn, max=0.0))
 
                 xj, Vj, dVjdx, uj_star, dujdx_star, dajdx, Bj, dBjdx = xn, Vn, dVndx, un_star, dundx_star, dandx, Bn, dBndx
 
-            print('w_lambda',w_lambda.shape) #torch.Size([1, 4, 1])
-            print('len(V0_tar)',len(V0_tar))  #4
-            print('V0_tar',torch.cat(V0_tar, dim=1).shape)   #[128, 2, 1])
             # Compute Exponential Average of the n-steps:
             Vn = torch.sum(w_lambda * torch.cat(V0_tar, dim=1), dim=1, keepdim=True)
 
@@ -223,6 +206,7 @@ def update_value_function(step_i, value_fun_tar, system, mem_train, hyper, write
 
         # Compute average loss statistics
         if verbose and (epoch_i == 0 or np.mod(epoch_i+1, 5) == 0):
+            #TODO something wrong here
             loss, loss_V = torch.stack(loss), torch.stack(loss_V)
             stats_loss, stats_loss_V = analyze_error(loss), analyze_error(loss_V)
             print_loss(epoch_i, stats_loss, stats_loss_V, time.perf_counter() - t0_start)

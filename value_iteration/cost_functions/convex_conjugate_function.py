@@ -215,29 +215,18 @@ class ArcTangent(ConvexConjugateFunction):
     def __call__(self, x):
         if isinstance(x, np.ndarray):
             assert np.all(np.abs(x) <= self.a)
-            shape = x.shape
-
-            x = x.reshape((-1, self.n, 1))
-            g = -2.0 * self.b * self.a / np.pi * np.log(np.clip(np.cos(np.pi / (2. * self.a) * x), 0.0, 1.0)).reshape(shape)
-
+            g = -2.0 * self.b * self.a / np.pi * np.log(np.clip(np.cos(np.pi / (2. * self.a) * x), 0.0, 1.0))
             if self.n > 1:
                 g = np.sum(g, axis=1,keepdims=True)
-            print(g.shape,'g')
 
         elif isinstance(x, torch.Tensor):
             x = torch.clamp(x, -self.a, self.a)
             assert torch.all(torch.abs(x) <= self.a)
-
-            shape = x.shape
-            print(shape)
-            x = x.view(-1, self.n, 1)
-            g = -2.0 * self.b * self.a / np.pi * torch.log(torch.clamp(torch.cos(np.pi / (2. * self.a) * x), 0.0, 1.0)).view(shape)
-            print(g.shape,'g')
+            g = -2.0 * self.b * self.a / np.pi * torch.log(torch.clamp(torch.cos(np.pi / (2. * self.a) * x), 0.0, 1.0))
             if self.n > 1:
                 g = torch.sum(g, axis=1,keepdim=True)
         else:
             raise ValueError("x must be either an numpy.ndarray or torch.Tensor, but is type {0}.".format(type(x)))
-        print(g.shape,'g')
         return g
 
     def grad(self, x):
@@ -247,8 +236,6 @@ class ArcTangent(ConvexConjugateFunction):
             shape = x.shape
             x = x.reshape((-1, self.n, 1))
             g_grad = self.b * np.tan(np.pi/(2.*self.a) * x).reshape(shape)
-            # if self.n > 1:
-            #     g_grad = np.sum(g_grad, axis=1,keepdims=True)
 
 
         elif isinstance(x, torch.Tensor):
@@ -257,8 +244,6 @@ class ArcTangent(ConvexConjugateFunction):
             shape = x.shape
             x = x.view(-1, self.n, 1)
             g_grad = self.b * torch.tan(np.pi/(2.*self.a) * x).view(shape)
-            # if self.n > 1:
-            #     g_grad = torch.sum(g_grad, axis=1,keepdim=True)
 
         else:
             raise ValueError("x must be either an numpy.ndarray or torch.Tensor, but is type {0}.".format(type(x)))
@@ -291,21 +276,15 @@ class ArcTangent(ConvexConjugateFunction):
 
     def grad_convex_conjugate(self, x):
         if isinstance(x, np.ndarray):
-
-            shape = x.shape
-            x = x.reshape((-1, self.n, 1))
-            g_star_grad = 2. * self.a / np.pi * np.arctan(x / self.b).reshape(shape)
+            g_star_grad = 2. * self.a / np.pi * np.arctan(x / self.b)
 
         elif isinstance(x, torch.Tensor):
-
-            shape = x.shape
-            x = x.view(-1, self.n, 1)
-            g_star_grad = 2. * self.a / np.pi * torch.atan(x / self.b).view(shape)
+            g_star_grad = 2. * self.a / np.pi * torch.atan(x / self.b)
 
         else:
             raise ValueError("x must be either an numpy.ndarray or torch.Tensor, but is type {0}.".format(type(x)))
-
-        return g_star_grad
+        
+        return g_star_grad.to(torch.float32)
 
     def hessian_convex_conjugate(self, x):
         if isinstance(x, np.ndarray):
@@ -335,8 +314,7 @@ def convex_conjugate_test(fun, verbose=True, plot=True):
     y_torch = torch.from_numpy(y).float()
 
     g = fun(x)
-    print(g.shape,'g')
-    print(x.shape,'x')
+    
     g_star = fun.convex_conjugate(y)
     g_torch = fun(x_torch).numpy()
     g_star_torch = fun.convex_conjugate(y_torch).numpy()

@@ -333,7 +333,7 @@ class DoulbePendulumLogCos(DoulbePendulum):
 
         # Create the dynamics:
         super(DoulbePendulumLogCos, self).__init__(cuda=cuda, **kwargs)
-        self.u_lim = torch.tensor([6., 0])
+        self.u_lim = torch.tensor([[6.], [1]])
         device = torch.device("cuda" if cuda else "cpu")
 
         # Create the Reward Function:
@@ -343,14 +343,16 @@ class DoulbePendulumLogCos(DoulbePendulum):
         assert R.size == self.n_act and np.all(R > 0.0)
         self.R = np.diag(R).reshape((self.n_act, self.n_act))
 
+
         self._q = SineQuadraticCost(self.Q, np.array([0.0, 1.0, 0.0, 0.0]), cuda=cuda)
         self.q = BarrierCost(self._q,  self.x_penalty, cuda)
-
+        # print('self.R:',self.u_lim.view(-1,1)*self.R)
         # Determine beta s.t. the curvature at u = 0 is identical to 2R
         beta = 4. * self.u_lim ** 2 / np.pi * self.R
+        beta = torch.diag(beta).view(self.n_act, 1)
         # beta = torch.tensor([40,40]) 
         self.u_lim = self.u_lim.to(device)
-        self.r = ArcTangent(alpha=self.u_lim, beta=beta.numpy()[0, 0])
+        self.r = ArcTangent(alpha=self.u_lim, beta=beta)
 
     def rwd(self, x, u):
         return self.q(x) + self.r(u)
