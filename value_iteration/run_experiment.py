@@ -181,14 +181,16 @@ def run_experiment(hyper):
     print("\n################################################")
     print("Evaluate the Value Function:")
     t0 = time.perf_counter()
-    n_test = 100
-
+    n_test = 5
+    
     # Compute the value-function error:
+    print('Compute the value-function error:')
     value_fun = value_fun.cuda() if cuda else value_fun.cpu()
     x, u, V, dVdx, V0_tar, Vn_tar, V_diff = eval_memory(value_fun, hyper, mem_test, system)
     test_err_hjb = 1. / float(x_grid.shape[0]) * torch.sum(V_diff**2).numpy()
 
     # Evaluate expected reward with uniform initial state distribution:
+    print('Evaluate expected reward with uniform initial state distribution:')
     test_config = {"verbose": False, 'mode': 'init', 'fs_return': 100., 'x_noise': 0.0, 'u_noise': 0.0}
     _, uniform_trajectory_data = sample_data(hyper["T"], n_test, value_fun, hyper, system, test_config)
     R_uniform = uniform_trajectory_data[3].squeeze()
@@ -225,9 +227,35 @@ def run_experiment(hyper):
         x_tra = downward_trajectory_data[0].cpu().numpy()
         u_tra = downward_trajectory_data[1].cpu().numpy()
         x_mat = x.reshape(*mat_shape, system.n_state)
-        xx, xy = x_mat[:, :, 0], x_mat[:, :, 1]
-        u_mat = u.reshape(*mat_shape, system.n_act)[:, :, 0]
+        # print('----evaluate----')
+        # print(x_tra.shape, u_tra.shape, x_mat.shape) 
+        # x_mat torch.Size([1, 150, 1, 150, 4]) 
+
+        # xx, xy = x_mat[:, :, 0], x_mat[:, :, 1]
+
+        # 确保 n_plot 不超过 x_tra 的大小
+        n_plot = min(n_plot, x_tra.shape[1])
+        
+        if system.name.split("_")[0] == "Pendulum":
+            xx, xy = x_mat[:, :, 0], x_mat[:, :, 1]
+        elif system.name.split("_")[0] == "Cartpole":
+            xx, xy = x_mat[0, :, 0, :, 0], x_mat[0, :, 0, :, 1]
+        elif system.name.split("_")[0] == "DoulbePendulum":
+            xx, xy = x_mat[0, :, 0, :, 0], x_mat[0, :, 0, :, 1]
+
+
+        u_mat = u.reshape(*mat_shape, system.n_act)
         V_mat = V.reshape(mat_shape)
+
+        if system.name.split("_")[0] == "Cartpole":
+            V_mat = V_mat[0, :, 0, :]
+            u_mat = u_mat[0, :, 0, :, 0]
+        elif system.name.split("_")[0] == "DoulbePendulum":
+            V_mat = V_mat[0, :, 0, :]
+            u_mat = u_mat[0, :, 0, :, 0]
+
+        # u_mat = u.reshape(*mat_shape, system.n_act)[:, :, 0]
+        # V_mat = V.reshape(mat_shape)
 
         x_lim = scale * torch.tensor([system.x_lim[0], system.x_lim[1]]).float()
         norm_V = cm.colors.Normalize(vmax=0.0, vmin=-torch.abs(V).max())
@@ -268,13 +296,23 @@ def run_experiment(hyper):
         cset = ax_pi.contourf(xx, xy, u_mat, **plot_hyper)
         plt.colorbar(cset, ax=ax_pi)
 
+        # print("Shape of x_tra:", x_tra.shape)
+
         for i in range(n_plot):
             xi_tra = add_nan(x_tra[:, i, :, 0], system.wrap_i)
             ax_val.plot(xi_tra[:, 0], xi_tra[:, 1], c="k", alpha=0.25)
             ax_pi.plot(xi_tra[:, 0], xi_tra[:, 1], c="k", alpha=0.25)
 
+        # for i in range(n_plot):
+        #     xi_tra = add_nan(x_tra[:, i, :, 0], system.wrap_i)
+        #     ax_val.plot(xi_tra[:, 0], xi_tra[:, 1], c="k", alpha=0.25)
+        #     ax_pi.plot(xi_tra[:, 0], xi_tra[:, 1], c="k", alpha=0.25)
+
+
         fig = plt.figure(figsize=(12, 5))
         fig.subplots_adjust(left=0.065, bottom=0.1, right=0.98, top=0.97, wspace=0.1, hspace=0.3)
+        # fig = plt.figure(figsize=(12, 4))
+        # fig.subplots_adjust(left=0.05, bottom=0.12, right=1.0, top=0.93, wspace=0.1, hspace=0.3)
 
         def format_time_ax(ax, i):
             v_ticks = [-7.5, 0.0, +7.5]

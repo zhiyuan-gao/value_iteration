@@ -46,7 +46,7 @@ class DoulbePendulum(BaseSystem):
 
         # Continuous Joints:
         # Right now only one continuous joint is supported
-        self.wrap, self.wrap_i = True, 2
+        self.wrap, self.wrap_i = True, 1
 
         # State Constraints:
         # theta = 0, means the pendulum is pointing upward
@@ -58,7 +58,7 @@ class DoulbePendulum(BaseSystem):
 
         # 10 degree angle error for initial sampling
         self.x_init = torch.tensor([0.17, 0.17, 0.01, 0.01])
-        self.u_lim = torch.tensor([6., 0.5])
+        self.u_lim = torch.tensor([6., 0.00001])
 
         """
         Parameters
@@ -333,7 +333,7 @@ class DoulbePendulumLogCos(DoulbePendulum):
 
         # Create the dynamics:
         super(DoulbePendulumLogCos, self).__init__(cuda=cuda, **kwargs)
-        self.u_lim = torch.tensor([[6.], [1]])
+        self.u_lim = torch.tensor([[6.], [0.00001]])
         device = torch.device("cuda" if cuda else "cpu")
 
         # Create the Reward Function:
@@ -343,19 +343,18 @@ class DoulbePendulumLogCos(DoulbePendulum):
         assert R.size == self.n_act and np.all(R > 0.0)
         self.R = np.diag(R).reshape((self.n_act, self.n_act))
 
-
-        self._q = SineQuadraticCost(self.Q, np.array([0.0, 1.0, 0.0, 0.0]), cuda=cuda)
+        self._q = SineQuadraticCost(self.Q, np.array([1.0, 1.0, 0.0, 0.0]), cuda=cuda)
         self.q = BarrierCost(self._q,  self.x_penalty, cuda)
         # print('self.R:',self.u_lim.view(-1,1)*self.R)
         # Determine beta s.t. the curvature at u = 0 is identical to 2R
         beta = 4. * self.u_lim ** 2 / np.pi * self.R
-        beta = torch.diag(beta).view(self.n_act, 1)
+        beta = torch.diag(beta).view(self.n_act, 1).to(device)
         # beta = torch.tensor([40,40]) 
         self.u_lim = self.u_lim.to(device)
         self.r = ArcTangent(alpha=self.u_lim, beta=beta)
 
     def rwd(self, x, u):
-        return self.q(x) + self.r(u)
+        return self.q(x-self.x_target.view(-1,1).to(x.device)) + self.r(u)
 
     def cuda(self, device=None):
         super(DoulbePendulumLogCos, self).cuda(device=device)

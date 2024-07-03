@@ -65,6 +65,11 @@ def update_value_function(step_i, value_fun_tar, system, mem_train, hyper, write
 
             # Compute uniform scaling of adversarial noise:
             noise_shape = (trace_n, xj.shape[0])
+            # print('trace_n', trace_n)    4
+            # print('noise_shape', noise_shape)   4 128
+            # trace_n 4
+            # noise_shape (4, 128)
+
             mu_x, mu_u = torch.zeros(system.n_state), torch.zeros(system.n_act)
             eye_x, eye_u = torch.eye(system.n_state), torch.eye(system.n_act)
 
@@ -83,6 +88,12 @@ def update_value_function(step_i, value_fun_tar, system, mem_train, hyper, write
             o_noise = dist_o_noise.sample(noise_shape).to(xj.device)
             o_noise = torch.cumsum(np.sqrt(hyper["dt"]) * hyper["xi_o_alpha"] / 1.96 * o_noise, dim=0)
             xi_o_scale = torch.sqrt(torch.sum(o_noise**2, dim=2)).view(trace_n, xj.shape[0], 1, 1)
+            # print('x_noise', x_noise.shape)
+            # print('u_noise', u_noise.shape)
+            # print('o_noise', o_noise.shape)
+            # x_noise torch.Size([4, 128, 4])
+            # u_noise torch.Size([4, 128, 2])
+            # o_noise torch.Size([4, 128, 4])
 
             min_theta, max_theta = - hyper["xi_m_alpha"] * system.theta, hyper["xi_m_alpha"] * system.theta
             xi_M_range, xi_M_mu = (max_theta - min_theta)/2., (max_theta + min_theta)/2.
@@ -114,10 +125,32 @@ def update_value_function(step_i, value_fun_tar, system, mem_train, hyper, write
                 # z_m = -torch.matmul((torch.matmul(dBjdp, uj_star.unsqueeze(-1)).squeeze(-1) + dajdp).squeeze(-1), dVjdx)
                 xi_m = float(hyper["robust"]) * bounds(z_m, xi_M_mu, xi_M_range)
 
+                # print('z_x', z_x.shape)
+                # print('z_u', z_u.shape)
+                # print('z_o', z_o.shape)
+                # print('z_m', z_m.shape)
+
+                # print('xi_x', xi_x.shape)
+                # print('xi_u', xi_u.shape)
+                # print('xi_o', xi_o.shape)
+                # print('xi_m', xi_m.shape)
+                # z_x torch.Size([128, 4, 1])
+                # z_u torch.Size([128, 2, 1])
+                # z_o torch.Size([128, 4, 1])
+                # z_m torch.Size([128, 15, 1])
+                # xi_x torch.Size([128, 4, 1])
+                # xi_u torch.Size([128, 2, 1])
+                # xi_o torch.Size([128, 4, 1])
+                # xi_m torch.Size([128, 15, 1])
+
                 # Compute next state:
                 aj_xi, Bj_xi = system.dyn(xj + xi_o, dtheta=xi_m)
                 xdj = aj_xi + torch.matmul(Bj_xi, uj_star + xi_u)
                 xn = xj + hyper["dt"] * xdj + xi_x
+
+                # print('xdj', xdj.shape)
+                # print('xn', xn.shape)
+
 
                 # Compute wrap-around for continuous joints
                 if system.wrap:
@@ -128,9 +161,17 @@ def update_value_function(step_i, value_fun_tar, system, mem_train, hyper, write
 
                 # Compute dynamics at the next step:
                 an, Bn, dandx, dBndx = system.dyn(xn, gradient=True)
+                # print('an', an.shape)
+                # print('Bn', Bn.shape)
+                # print('dandx', dandx.shape)
+                # print('dBndx', dBndx.shape)
 
                 # Compute the value function of the next state:
                 Vn, dVndx, un_star, dundx_star = policy(xn, Bn, system.r, value_fun_tar)
+                # print('Vn', Vn.shape)
+                # print('dVndx', dVndx.shape)
+                # print('un_star', un_star.shape)
+                # print('dundx_star', dundx_star.shape)   #none
 
                 # Compute the target value function:
                 V0_tar.append(torch.clamp(r + hyper['gamma'] ** (n+1) * Vn, max=0.0))
@@ -143,7 +184,8 @@ def update_value_function(step_i, value_fun_tar, system, mem_train, hyper, write
             # Compute the Value function target:
             delta_V = Vn - V0
             Vi_tar = Vn
-
+            # print('delta_V', delta_V.shape)  #128 1 1
+            # print('Vi_tar', Vi_tar.shape)#128 1 1
             # Update Buffers:
             x_tar.append(x0)
             V_tar.append(Vi_tar)
@@ -153,6 +195,10 @@ def update_value_function(step_i, value_fun_tar, system, mem_train, hyper, write
 
         # Stack results:
         x_tar, V_tar, V_diff = torch.cat(x_tar), torch.cat(V_tar), torch.cat(V_diff)
+        # print('x_tar', x_tar.shape)  256 4 1
+        # print('V_tar', V_tar.shape)  256 1 1
+        # print('V_diff', V_diff.shape)   256 1 1
+
         assert torch.all(V_tar <= 0.0)
 
         # Compute current performance:
@@ -188,9 +234,11 @@ def update_value_function(step_i, value_fun_tar, system, mem_train, hyper, write
     # Update Value function to minimize the error between value function and value target:
     t0_start, epoch_i, t_opt = time.perf_counter(), 0, 0.0
     while epoch_i < hyper["max_epoch"]:
+        print('epoch_i', epoch_i)
         loss, loss_V = [], []
 
         for n_batch, batch_i in enumerate(mem):
+            print('n_batch', n_batch)
             xi, Vi_tar = batch_i
             optimizer.zero_grad()
 
@@ -200,6 +248,9 @@ def update_value_function(step_i, value_fun_tar, system, mem_train, hyper, write
             J_cost = torch.mean(err_V)
             J_cost.backward()
             optimizer.step()
+            print('----')
+            print('J_cost', J_cost.shape)
+            print('err_V', err_V.shape)
 
             loss.append(J_cost.detach())
             loss_V.append(torch.mean(err_V.detach()))
@@ -233,6 +284,7 @@ def eval_memory(val_fun, hyper, mem, system):
         w_lambda[0, -1, 0] = trace_l ** (trace_n - 1)
 
         for n_batch, batch_i in enumerate(mem):
+            # print()
             Vn, Vn_diff = [], []
             xi, ai, daidx, Bi, dBidx = batch_i
 

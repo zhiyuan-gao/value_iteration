@@ -279,6 +279,11 @@ class ArcTangent(ConvexConjugateFunction):
             g_star_grad = 2. * self.a / np.pi * np.arctan(x / self.b)
 
         elif isinstance(x, torch.Tensor):
+            # print(self.a / np.pi )
+            # print('---')
+            # print(x.device)
+            # print(self.b.device)
+            # print(torch.atan(x / self.b).device)
             g_star_grad = 2. * self.a / np.pi * torch.atan(x / self.b)
 
         else:
