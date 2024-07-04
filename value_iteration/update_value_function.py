@@ -95,7 +95,8 @@ def update_value_function(step_i, value_fun_tar, system, mem_train, hyper, write
             # u_noise torch.Size([4, 128, 2])
             # o_noise torch.Size([4, 128, 4])
 
-            min_theta, max_theta = - hyper["xi_m_alpha"] * system.theta, hyper["xi_m_alpha"] * system.theta
+            # min_theta, max_theta = - hyper["xi_m_alpha"] * system.theta, hyper["xi_m_alpha"] * system.theta
+            min_theta, max_theta = -system.theta_min, system.theta_max
             xi_M_range, xi_M_mu = (max_theta - min_theta)/2., (max_theta + min_theta)/2.
 
             r,  drdx = 0.0, 0.0

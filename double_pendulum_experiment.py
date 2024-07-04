@@ -55,11 +55,11 @@ if __name__ == "__main__":
 
         # System Specification:
         'system_class': DoulbePendulumLogCos,
-        'state_cost': '25.e+0, 1.e+0, 5.e-1, 1.e-1',
-        'action_cost': '1.e-1,1.e-1',
+        'state_cost': '5.e+0, 5.e+0, 1.e-1, 1.e-1',
+        'action_cost': '1.e-2,1.e-2',
         'eps': 0.80,  # eps = 1 => \gamma = 1
-        'dt': 1. / 5.,
-        'T': 5.,
+        'dt': 1. / 500.,
+        'T': 10.,
 
         # Network:
         'n_network': 4,
@@ -73,10 +73,10 @@ if __name__ == "__main__":
 
         # Samples
         'n_iter': 250,
-        'eval_minibatch': 256 * 1,
+        'eval_minibatch': 256 * 200,
         'test_minibatch': 256 * 20,
         'n_minibatch': 512,
-        'n_batches': 2,
+        'n_batches': 200,
 
         # Network Optimization
         'max_epoch': 20,
@@ -86,7 +86,7 @@ if __name__ == "__main__":
 
         # Lambda Traces
         'trace_weight_n': 1.e-4,
-        'trace_lambda': 0.10,
+        'trace_lambda': 0.90,
 
         # Exploration:
         'x_noise': 1.e-6,
@@ -94,10 +94,10 @@ if __name__ == "__main__":
     }
 
     # Select the admissible set of the adversary:
-    hyper['xi_x_alpha'] = 0.025 if hyper["robust"] else 1.e-6
+    hyper['xi_x_alpha'] = 1.e-6 if hyper["robust"] else 1.e-6
     hyper['xi_u_alpha'] = 0.100 if hyper["robust"] else 1.e-6
     hyper['xi_o_alpha'] = 0.025 if hyper["robust"] else 1.e-6
-    hyper['xi_m_alpha'] = 0.150 if hyper["robust"] else 1.e-6
+    hyper['xi_m_alpha'] = 1. if hyper["robust"] else 1.e-6
 
     print("Hyperparameters:")
     for key in hyper.keys():
@@ -105,3 +105,7 @@ if __name__ == "__main__":
 
     # Run Experiment:
     run_experiment(hyper)
+
+from datetime import datetime
+current_time = datetime.now()
+print("Current Time:", current_time)

@@ -227,8 +227,7 @@ def run_experiment(hyper):
         x_tra = downward_trajectory_data[0].cpu().numpy()
         u_tra = downward_trajectory_data[1].cpu().numpy()
         x_mat = x.reshape(*mat_shape, system.n_state)
-        # print('----evaluate----')
-        # print(x_tra.shape, u_tra.shape, x_mat.shape) 
+
         # x_mat torch.Size([1, 150, 1, 150, 4]) 
 
         # xx, xy = x_mat[:, :, 0], x_mat[:, :, 1]
@@ -296,8 +295,6 @@ def run_experiment(hyper):
         cset = ax_pi.contourf(xx, xy, u_mat, **plot_hyper)
         plt.colorbar(cset, ax=ax_pi)
 
-        # print("Shape of x_tra:", x_tra.shape)
-
         for i in range(n_plot):
             xi_tra = add_nan(x_tra[:, i, :, 0], system.wrap_i)
             ax_val.plot(xi_tra[:, 0], xi_tra[:, 1], c="k", alpha=0.25)
@@ -321,19 +318,19 @@ def run_experiment(hyper):
 
             if i == 1:
                 ax.set_ylabel(r"Angle [Rad]")
-                ax.set_ylim(-x_lim[0], x_lim[0])
+                ax.set_ylim(-x_lim[0].cpu().numpy(), x_lim[0].cpu().numpy())
                 ax.set_yticks(x_ticks)
                 ax.set_yticklabels(x_tick_label)
 
             elif i == 2:
                 ax.set_ylabel(r"Velocity [Rad/s]")
-                ax.set_ylim(-x_lim[1], x_lim[1])
+                ax.set_ylim(-x_lim[1].cpu().numpy(), x_lim[1].cpu().numpy())
                 ax.set_yticks(v_ticks)
 
             elif i == 3:
                 ax.set_ylabel(r"Torque [Nm]")
                 ax.set_xlabel("Time [s]")
-                ax.set_ylim(-system.u_lim[0], system.u_lim[0])
+                ax.set_ylim(-system.u_lim[0].cpu().numpy(), system.u_lim[0].cpu().numpy())
 
             else:
                 raise ValueError
@@ -341,6 +338,7 @@ def run_experiment(hyper):
             ax.yaxis.set_label_coords(-0.045, 0.5)
             ax.set_xlim(0, hyper["T"])
             return ax
+
 
         ax_xp = format_time_ax(fig.add_subplot(3, 1, 1), 1)
         ax_xv = format_time_ax(fig.add_subplot(3, 1, 2), 2)

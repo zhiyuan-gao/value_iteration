@@ -16,15 +16,11 @@ CUDA_AVAILABLE = torch.cuda.is_available()
 
 # model parameters to dict
 def theta_to_dict(theta_tensor):
-
     tensor_flattened = theta_tensor.view(-1)
+    keys = ['Ir', 'r1', 'I1', 'b1', 'cf1', 'r2', 'm2', 'I2', 'b2', 'cf2']
+    change_para = {key: value.item() for key, value in zip(keys, tensor_flattened)}
 
-    keys = ['m1', 'm2', 'l1', 'l2', 'r1', 'r2', 'b1', 'b2', 'cf1', 'cf2', 'g', 'I1', 'I2', 'Ir', 'gr']
-
-    para_dict = {key: value.item() for key, value in zip(keys, tensor_flattened)}
-
-    return para_dict
-
+    return change_para
 
 
 class DoulbePendulum(BaseSystem):
@@ -42,7 +38,7 @@ class DoulbePendulum(BaseSystem):
         self.n_state = 4
         self.n_dof = 2
         self.n_act = 2
-        self.n_parameter = 15
+        self.n_parameter = 10
 
         # Continuous Joints:
         # Right now only one continuous joint is supported
@@ -52,13 +48,13 @@ class DoulbePendulum(BaseSystem):
         # theta = 0, means the pendulum is pointing upward
         self.x_target = torch.tensor([np.pi, 0.0, 0.0, 0.0])
         self.x_start = torch.tensor([0.0, 0., 0.0, 0.0])
-        self.x_start_var = torch.tensor([1.e-3, 5.e-2, 1.e-6, 1.e-6])
+        self.x_start_var = torch.tensor([1.e-2, 1.e-2, 1.e-6, 1.e-6])
         self.x_lim = torch.tensor([np.pi, np.pi, 15., 15.])
         self.x_penalty = torch.tensor([10, 5., 1., 1])
 
         # 10 degree angle error for initial sampling
-        self.x_init = torch.tensor([0.17, 0.17, 0.01, 0.01])
-        self.u_lim = torch.tensor([6., 0.00001])
+        self.x_init = torch.tensor([0.17, 0.17, 1.e-3, 1.e-3])
+        self.u_lim = torch.tensor([6., 1.e-6])
 
         """
         Parameters
@@ -118,20 +114,21 @@ class DoulbePendulum(BaseSystem):
         inertia=[0.0475, 0.0798]
         motor_inertia=0.
         gear_ratio=6
-        torque_limit=[6.0, 0.0]
+        torque_limit=[10.0, 10.0] #this is to determine the D matrix. not the actual torque limit
 
-        self.symbol_theta = smp.symbols("m1 m2 l1 l2 r1 r2 b1 b2 cf1 cf2 g I1 I2 Ir gr")
+        fixed_para = {'g':9.81, 'm1':0.608, 'gr':6.0, 'l1':0.3, 'l2':0.4}
+        change_para = {'Ir':0.0, 'r1':0.275, 'I1':0.0475, 'b1':0.005, 'cf1':0.093, 'r2':0.415, 'm2':0.630, 'I2':0.0798, 'b2':0.005, 'cf2':0.14}
 
-        m1, m2, l1, l2, r1, r2, b1, b2, cf1, cf2, g, I1, I2, Ir, gr =self.symbol_theta
+        self.symbol_theta = smp.symbols("Ir r1 I1 b1 cf1 r2 m2 I2 b2 cf2")
+        Ir, r1, I1, b1, cf1, r2, m2, I2, b2, cf2 =self.symbol_theta
 
-        parameters = mass + length + com + damping + cfric + [gravity] + inertia + [motor_inertia] + [gear_ratio]
+        # Model parameters
+        self.theta = torch.tensor(list(change_para.values())).view(1, self.n_parameter, 1)
 
-        # Dynamics parameter:
-        self.theta = torch.tensor(parameters).view(1, self.n_parameter, 1)
-
-        #TODO change to the var later
-        self.theta_min = 0.5 * self.theta
-        self.theta_max = 1.5 * self.theta
+        theta_min = [0, 0.275*0.25, 0.75*0.0475, -0.1, -0.2, 0.75*0.415, 0.75*0.630, 0.75*0.0798, -0.1, 0.2]
+        theta_max = [1e-4, 0.275*1.25, 1.25*0.0475, 0.1, 0.2, 1.25*0.415, 1.25*0.630, 1.25*0.0798, -0.1, 0.2]
+        self.theta_min = torch.tensor(theta_min).view(1, self.n_parameter, 1)
+        self.theta_max = torch.tensor(theta_max).view(1, self.n_parameter, 1)
 
         self.plant = SymbolicDoublePendulum(mass=mass,
                                     length=length,
@@ -148,13 +145,16 @@ class DoulbePendulum(BaseSystem):
         self.plant.qd2, self.plant.qdd1, self.plant.qdd2
         self.symbol_x = smp.Matrix([q1, q2, qd1, qd2])
 
+        # symbolic matrix
         invM  = self.plant.M.inv()
-        # print(self.plant.B)
         q_dot = smp.Matrix([qd1, qd2])
-        # q = smp.Matrix([q1, q1])
-        # x = smp.Matrix([q1, q2, qd1, qd2])
+
         self.symbolic_a = q_dot.col_join(invM * (-self.plant.C*q_dot +self.plant.G - self.plant.F))
         self.symbolic_B = smp.Matrix([[0., 0.], [0., 0.]]).col_join(invM* self.plant.B)
+
+        # substitute the fixed parameters
+        self.symbolic_a = self.symbolic_a.subs(fixed_para)
+        self.symbolic_B = self.symbolic_B.subs(fixed_para)
 
         assert self.symbolic_a.shape == (self.n_state, 1)
         assert self.symbolic_B.shape == (self.n_state, self.n_act)
@@ -178,15 +178,14 @@ class DoulbePendulum(BaseSystem):
                 for k in range(self.n_act):
                     self.symbolic_dBdpT[i, j, k] = smp.diff(self.symbolic_B[j, k], self.symbol_theta[i])
 
-        para_dict = theta_to_dict(self.theta)
-        self.dadp_x = self.symbolic_dadpT.subs(para_dict)
+        self.dadp_x = self.symbolic_dadpT.subs(change_para)
 
         # bring theta to symbolic_dBdpT, since MutableDenseNDimArray can not be used in subs
         self.dBdp_x = smp.MutableDenseNDimArray.zeros(self.n_parameter, self.n_state, self.n_act)
         for i in range(self.n_parameter):
             for j in range(self.n_state):
                 for k in range(self.n_act):
-                    self.dBdp_x[i, j, k] = self.symbolic_dBdpT[i, j, k].subs(para_dict)
+                    self.dBdp_x[i, j, k] = self.symbolic_dBdpT[i, j, k].subs(change_para)
 
         # Compute Linearized System:
         out = self.dyn(self.x_target, gradient=True)
@@ -218,16 +217,13 @@ class DoulbePendulum(BaseSystem):
         else:
             theta = self.theta
 
-        para_dict = theta_to_dict(theta)
+        change_para = theta_to_dict(theta)
 
-        a_x = self.symbolic_a.subs(para_dict)
-        B_x = self.symbolic_B.subs(para_dict)
+        a_x = self.symbolic_a.subs(change_para)
+        B_x = self.symbolic_B.subs(change_para)
 
         a_la = lambdify(self.symbol_x, a_x)
         B_la = lambdify(self.symbol_x, B_x)
-
-        # a = torch.stack([torch.tensor(a_la(*sample.squeeze().detach().numpy())).reshape(self.n_state, 1) for sample in x])
-        # B = torch.stack([torch.tensor(B_la(*sample.squeeze().detach().numpy())).reshape(self.n_state, self.n_act) for sample in x])
 
         a = torch.stack([
             torch.tensor(a_la(*sample.squeeze().detach().cpu().numpy())).reshape(self.n_state, 1).to(x.device)
@@ -246,10 +242,9 @@ class DoulbePendulum(BaseSystem):
 
         if gradient:
 
-            dadxT_x = self.symbolic_dadxT.subs(para_dict)
+            dadxT_x = self.symbolic_dadxT.subs(change_para)
             dadxT_la = lambdify(self.symbol_x, dadxT_x)
 
-            # dadx = torch.stack([torch.tensor(dadx_la(*sample.squeeze().detach().numpy())).reshape(self.n_state, self.n_state) for sample in x])
             dadx = torch.stack([
                 torch.tensor(dadxT_la(*sample.squeeze().detach().cpu().numpy())).reshape(self.n_state, self.n_state).to(x.device)
                 for sample in x
@@ -260,11 +255,10 @@ class DoulbePendulum(BaseSystem):
             for i in range(self.n_state):
                 for j in range(self.n_state):
                     for k in range(self.n_act):
-                        dBdxT_x[i, j, k] = self.symbolic_dBdpT[i, j, k].subs(para_dict)
+                        dBdxT_x[i, j, k] = self.symbolic_dBdpT[i, j, k].subs(change_para)
 
             dBdxT_la = lambdify(self.symbol_x, dBdxT_x)
 
-            # dBdx = torch.stack([torch.tensor(dBdx_la(*sample.squeeze().detach().numpy())).reshape(self.n_state, self.n_state, self.n_act) for sample in x])
             dBdx = torch.stack([
                 torch.tensor(dBdxT_la(*sample.squeeze().detach().cpu().numpy())).reshape(self.n_state, self.n_state, self.n_act).to(x.device)
                 for sample in x
@@ -299,8 +293,6 @@ class DoulbePendulum(BaseSystem):
             for sample in x
         ]).float()
 
-        # dadp = torch.stack([torch.tensor(dadp_la(*sample.squeeze().detach().numpy())).reshape(self.n_parameter, self.n_state) for sample in x])
-        # dBdp = torch.stack([torch.tensor(dBdp_la(*sample.squeeze().detach().numpy())).reshape(self.n_parameter, self.n_state, self.n_act) for sample in x])
         assert dadp.shape == (n_samples, self.n_parameter, self.n_state)
         assert dBdp.shape == (n_samples, self.n_parameter, self.n_state, self.n_act)
         out = (dadp, dBdp)
