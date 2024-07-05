@@ -1,11 +1,11 @@
 import numpy as np
 import torch
-
+import time
 import sys
 import os
 current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(current_dir, '..'))
-
+import cupy as cp
 import sympy as smp
 from sympy.utilities import lambdify
 
@@ -31,8 +31,8 @@ class DoulbePendulum(BaseSystem):
         super(DoulbePendulum, self).__init__()
 
         # Define Duration:
-        self.T = kwargs.get("T", 10.0)
-        self.dt = kwargs.get("dt", 1./500.)
+        self.T = kwargs.get("T", 5.0)
+        self.dt = kwargs.get("dt", 1./100.)
 
         # Define the System:
         self.n_state = 4
@@ -200,6 +200,8 @@ class DoulbePendulum(BaseSystem):
         print("Double Pendulum System Initialized!")
 
     def dyn(self, x, dtheta=None, gradient=False):
+        print("dyn____________________________________________________")
+        start_time = time.time()
 
         is_numpy = True if isinstance(x, np.ndarray) else False
         x = torch.from_numpy(x) if isinstance(x, np.ndarray) else x
@@ -225,6 +227,12 @@ class DoulbePendulum(BaseSystem):
         a_la = lambdify(self.symbol_x, a_x)
         B_la = lambdify(self.symbol_x, B_x)
 
+
+
+        end_time = time.time()
+        execution_time = end_time - start_time
+        print(f"lambdify execution time: {execution_time} seconds")
+
         a = torch.stack([
             torch.tensor(a_la(*sample.squeeze().detach().cpu().numpy())).reshape(self.n_state, 1).to(x.device)
             for sample in x
@@ -238,9 +246,15 @@ class DoulbePendulum(BaseSystem):
 
         assert a.shape == (n_samples, self.n_state, 1)
         assert B.shape == (n_samples, self.n_state, self.n_act)
+
+        end_time = time.time()
+        execution_time = end_time - start_time
+        print(f"bring x execution time: {execution_time} seconds")
+        
         out = (a, B)
 
         if gradient:
+            grad_start_time = time.time()
 
             dadxT_x = self.symbolic_dadxT.subs(change_para)
             dadxT_la = lambdify(self.symbol_x, dadxT_x)
@@ -257,6 +271,12 @@ class DoulbePendulum(BaseSystem):
                     for k in range(self.n_act):
                         dBdxT_x[i, j, k] = self.symbolic_dBdpT[i, j, k].subs(change_para)
 
+
+            end_time = time.time()
+            execution_time = end_time - grad_start_time
+            print(f"grad subs execution time: {execution_time} seconds")
+
+
             dBdxT_la = lambdify(self.symbol_x, dBdxT_x)
 
             dBdx = torch.stack([
@@ -271,27 +291,71 @@ class DoulbePendulum(BaseSystem):
         if is_numpy:
             out = [array.numpy() for array in out]
 
+        end_time = time.time()
+        execution_time = end_time - start_time
+        print(f"dyn execution time: {execution_time} seconds")
         return out
 
     def grad_dyn_theta(self, x):
+        print("grad_dyn_theta____________________________________________________")
+        start_time = time.time()
 
         is_numpy = True if isinstance(x, np.ndarray) else False
         x = torch.from_numpy(x) if isinstance(x, np.ndarray) else x
         x = x.view(-1, self.n_state, 1)
         n_samples = x.shape[0]
 
-        dadp_la = lambdify(self.symbol_x, self.dadp_x)
-        dBdp_la = lambdify(self.symbol_x, self.dBdp_x)
+        # dadp_la = lambdify(self.symbol_x, self.dadp_x)
+        # dBdp_la = lambdify(self.symbol_x, self.dBdp_x)
+        # 使用 cupy 而不是 numpy
+        dadp_la = lambdify(self.symbol_x, self.dadp_x, 'cupy')
+        dBdp_la = lambdify(self.symbol_x, self.dBdp_x, 'cupy')
 
-        # bring x to dadp and dBdp
+
+
+        end_time = time.time()
+        execution_time = end_time - start_time
+        print(f"lambdify execution time: {execution_time} seconds")
+
+
+        # # 将数据传递给 dadp 和 dBdp，并确保使用 GPU
+        # dadp = torch.stack([
+        #     torch.tensor(cp.asnumpy(dadp_la(*sample.squeeze().detach().cpu().numpy()))).reshape(self.n_parameter, self.n_state).to(x.device)
+        #     for sample in x
+        # ]).float()
+        # dBdp = torch.stack([
+        #     torch.tensor(cp.asnumpy(dBdp_la(*sample.squeeze().detach().cpu().numpy()))).reshape(self.n_parameter, self.n_state, self.n_act).to(x.device)
+        #     for sample in x
+        # ]).float()
+
+        device = x.device
+
+        # 确保 xj 在 GPU 上，并转换为 cupy 数组
+        xj_cupy = [cp.asarray(sample.squeeze().detach().cpu().numpy()) for sample in x]
+
         dadp = torch.stack([
-            torch.tensor(dadp_la(*sample.squeeze().detach().cpu().numpy())).reshape(self.n_parameter, self.n_state).to(x.device)
-            for sample in x
+            torch.tensor(cp.asnumpy(dadp_la(*sample))).reshape(self.n_parameter, self.n_state).to(device)
+            for sample in xj_cupy
         ]).float()
+
         dBdp = torch.stack([
-            torch.tensor(dBdp_la(*sample.squeeze().detach().cpu().numpy())).reshape(self.n_parameter, self.n_state, self.n_act).to(x.device)
-            for sample in x
+            torch.tensor(cp.asnumpy(dBdp_la(*sample))).reshape(self.n_parameter, self.n_state, self.n_act).to(device)
+            for sample in xj_cupy
         ]).float()
+
+        # # bring x to dadp and dBdp
+        # dadp = torch.stack([
+        #     torch.tensor(dadp_la(*sample.squeeze().detach().cpu().numpy())).reshape(self.n_parameter, self.n_state).to(x.device)
+        #     for sample in x
+        # ]).float()
+        # dBdp = torch.stack([
+        #     torch.tensor(dBdp_la(*sample.squeeze().detach().cpu().numpy())).reshape(self.n_parameter, self.n_state, self.n_act).to(x.device)
+        #     for sample in x
+        # ]).float()
+
+        end_time = time.time()
+        execution_time = end_time - start_time
+        print(f"bring x to dadp and dBdp execution time: {execution_time} seconds")
 
         assert dadp.shape == (n_samples, self.n_parameter, self.n_state)
         assert dBdp.shape == (n_samples, self.n_parameter, self.n_state, self.n_act)
@@ -299,6 +363,9 @@ class DoulbePendulum(BaseSystem):
         if is_numpy:
             out = [array.cpu().detach().numpy() for array in out]
 
+        end_time = time.time()
+        execution_time = end_time - start_time
+        print(f"grad_dyn_theta execution time: {execution_time} seconds")
         return out
 
     def cuda(self, device=None):

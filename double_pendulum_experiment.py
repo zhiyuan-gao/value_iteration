@@ -73,9 +73,9 @@ if __name__ == "__main__":
 
         # Samples
         'n_iter': 250,
-        'eval_minibatch': 256 * 200,
+        'eval_minibatch': 256 * 1,
         'test_minibatch': 256 * 20,
-        'n_minibatch': 512,
+        'n_minibatch': 64,
         'n_batches': 200,
 
         # Network Optimization

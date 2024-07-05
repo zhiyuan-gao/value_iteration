@@ -186,15 +186,13 @@ class HyperbolicTangent(ConvexConjugateFunction):
 
 class ArcTangent(ConvexConjugateFunction):
     def __init__(self, alpha=+1., beta=+1.0):
-        if isinstance(alpha, float):
-            self.n = 1
-        elif isinstance(alpha, np.ndarray):
+
+        if isinstance(alpha, np.ndarray):
             self.n = alpha.shape[0]
         elif isinstance(alpha, torch.Tensor):
             self.n = alpha.shape[0]
-
         else:
-            raise ValueError("alpha must be either a float, numpy.ndarray or torch.Tensor, but is type {0}.".format(type(alpha)))   
+            self.n = 1
 
         self.a = alpha
         self.b = beta

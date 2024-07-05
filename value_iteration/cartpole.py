@@ -7,7 +7,7 @@ sys.path.append(os.path.join(current_dir, '..'))
 from value_iteration.pendulum import BaseSystem
 from value_iteration.cost_functions import ArcTangent, SineQuadraticCost, BarrierCost
 CUDA_AVAILABLE = torch.cuda.is_available()
-
+import time
 
 class Cartpole(BaseSystem):
     name = "Cartpole"
@@ -67,6 +67,7 @@ class Cartpole(BaseSystem):
         Cartpole.cuda(self) if cuda else Cartpole.cpu(self)
 
     def dyn(self, x, dtheta=None, gradient=False):
+        start_time = time.time()
         cat = torch.cat
 
         is_numpy = True if isinstance(x, np.ndarray) else False
@@ -151,9 +152,14 @@ class Cartpole(BaseSystem):
         if is_numpy:
             out = [array.numpy() for array in out]
 
+
+        end_time = time.time()
+        execution_time = end_time - start_time
+        print(f"dyn execution time: {execution_time} seconds")
         return out
 
     def grad_dyn_theta(self, x):
+        start_time = time.time()
         cat = torch.cat
 
         is_numpy = True if isinstance(x, np.ndarray) else False
@@ -225,6 +231,9 @@ class Cartpole(BaseSystem):
         if is_numpy:
             out = [array.cpu().detach().numpy() for array in out]
 
+        end_time = time.time()
+        execution_time = end_time - start_time
+        print(f"grad_dyn_theta execution time: {execution_time} seconds")
         return out
 
     def cuda(self, device=None):

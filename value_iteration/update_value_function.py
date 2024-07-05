@@ -35,6 +35,8 @@ def bounds(z, mu, range):
 
 
 def update_value_function(step_i, value_fun_tar, system, mem_train, hyper, writer, verbose=True):
+    print('______________________________________________________________________________________')
+    print('update_value_function start!')
 
     # Compute target value function:
     t0_target = time.perf_counter()
@@ -46,6 +48,7 @@ def update_value_function(step_i, value_fun_tar, system, mem_train, hyper, write
         trace_n = np.ceil(np.log(hyper["trace_weight_n"] / (1. - trace_l)) / np.log(trace_l)).astype(int)
         w_lambda = ((1. - trace_l) * trace_l ** torch.arange(0., trace_n, 1.)).view(1, -1, 1).to(value_fun_tar.device)
         w_lambda[0, -1, 0] = trace_l ** (trace_n - 1)
+        print('trace_n is',trace_n)
 
         x_lim = torch.from_numpy(system.x_lim).float() if isinstance(system.x_lim, np.ndarray) else system.x_lim
         x_lim = x_lim.to(value_fun_tar.device).view(1, system.n_state, 1)
@@ -126,32 +129,10 @@ def update_value_function(step_i, value_fun_tar, system, mem_train, hyper, write
                 # z_m = -torch.matmul((torch.matmul(dBjdp, uj_star.unsqueeze(-1)).squeeze(-1) + dajdp).squeeze(-1), dVjdx)
                 xi_m = float(hyper["robust"]) * bounds(z_m, xi_M_mu, xi_M_range)
 
-                # print('z_x', z_x.shape)
-                # print('z_u', z_u.shape)
-                # print('z_o', z_o.shape)
-                # print('z_m', z_m.shape)
-
-                # print('xi_x', xi_x.shape)
-                # print('xi_u', xi_u.shape)
-                # print('xi_o', xi_o.shape)
-                # print('xi_m', xi_m.shape)
-                # z_x torch.Size([128, 4, 1])
-                # z_u torch.Size([128, 2, 1])
-                # z_o torch.Size([128, 4, 1])
-                # z_m torch.Size([128, 15, 1])
-                # xi_x torch.Size([128, 4, 1])
-                # xi_u torch.Size([128, 2, 1])
-                # xi_o torch.Size([128, 4, 1])
-                # xi_m torch.Size([128, 15, 1])
-
                 # Compute next state:
                 aj_xi, Bj_xi = system.dyn(xj + xi_o, dtheta=xi_m)
                 xdj = aj_xi + torch.matmul(Bj_xi, uj_star + xi_u)
                 xn = xj + hyper["dt"] * xdj + xi_x
-
-                # print('xdj', xdj.shape)
-                # print('xn', xn.shape)
-
 
                 # Compute wrap-around for continuous joints
                 if system.wrap:
@@ -162,17 +143,9 @@ def update_value_function(step_i, value_fun_tar, system, mem_train, hyper, write
 
                 # Compute dynamics at the next step:
                 an, Bn, dandx, dBndx = system.dyn(xn, gradient=True)
-                # print('an', an.shape)
-                # print('Bn', Bn.shape)
-                # print('dandx', dandx.shape)
-                # print('dBndx', dBndx.shape)
 
                 # Compute the value function of the next state:
                 Vn, dVndx, un_star, dundx_star = policy(xn, Bn, system.r, value_fun_tar)
-                # print('Vn', Vn.shape)
-                # print('dVndx', dVndx.shape)
-                # print('un_star', un_star.shape)
-                # print('dundx_star', dundx_star.shape)   #none
 
                 # Compute the target value function:
                 V0_tar.append(torch.clamp(r + hyper['gamma'] ** (n+1) * Vn, max=0.0))
@@ -239,7 +212,7 @@ def update_value_function(step_i, value_fun_tar, system, mem_train, hyper, write
         loss, loss_V = [], []
 
         for n_batch, batch_i in enumerate(mem):
-            print('n_batch', n_batch)
+            # print('n_batch', n_batch)
             xi, Vi_tar = batch_i
             optimizer.zero_grad()
 
@@ -249,9 +222,6 @@ def update_value_function(step_i, value_fun_tar, system, mem_train, hyper, write
             J_cost = torch.mean(err_V)
             J_cost.backward()
             optimizer.step()
-            print('----')
-            print('J_cost', J_cost.shape)
-            print('err_V', err_V.shape)
 
             loss.append(J_cost.detach())
             loss_V.append(torch.mean(err_V.detach()))
@@ -267,6 +237,8 @@ def update_value_function(step_i, value_fun_tar, system, mem_train, hyper, write
 
     if verbose:
         print("")
+
+    print('update_value_function done!')
 
     return value_fun, stats_loss, stats_loss_V
 
