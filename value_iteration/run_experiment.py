@@ -134,7 +134,7 @@ def run_experiment(hyper):
 
     try:
         for step_i in range(hyper["n_iter"]):
-            print(f"{'Iteration':>25} {step_i+1:03d}")
+            # print(f"{'Iteration':>25} {step_i+1:03d}")
             t0_iter = time.perf_counter()
 
             # Compute the roll-out:

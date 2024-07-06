@@ -57,9 +57,9 @@ class Cartpole(BaseSystem):
         out = self.dyn(self.x_target, gradient=True)
         self.A = out[2].view(1, self.n_state, self.n_state).transpose(dim0=1, dim1=2).numpy()
         self.B = out[1].view(1, self.n_state, self.n_act).numpy()
-        print(type(out[0]))
-        print(f"out1 dtype: {out[1].dtype}")
-        print(f"out2 dtype: {out[2].dtype}")
+        # print(type(out[0]))
+        # print(f"out1 dtype: {out[1].dtype}")
+        # print(f"out2 dtype: {out[2].dtype}")
         # Test Dynamics:
         self.check_dynamics()
 
@@ -155,7 +155,7 @@ class Cartpole(BaseSystem):
 
         end_time = time.time()
         execution_time = end_time - start_time
-        print(f"dyn execution time: {execution_time} seconds")
+        # print(f"dyn execution time: {execution_time} seconds")
         return out
 
     def grad_dyn_theta(self, x):
@@ -233,7 +233,7 @@ class Cartpole(BaseSystem):
 
         end_time = time.time()
         execution_time = end_time - start_time
-        print(f"grad_dyn_theta execution time: {execution_time} seconds")
+        # print(f"grad_dyn_theta execution time: {execution_time} seconds")
         return out
 
     def cuda(self, device=None):

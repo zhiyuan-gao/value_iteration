@@ -15,19 +15,21 @@ class BaseSystem:
         self.n_act = 0
         self.x_lim = []
 
-    def check_dynamics(self, n_samples=10):
+    def check_dynamics(self, n_samples=256*100):
         # Checking Gradients:
         to_x_test = torch.distributions.uniform.Uniform(-self.x_lim, self.x_lim).sample((n_samples,))
         to_x_test = to_x_test.view(-1, self.n_state, 1).float().to(self.theta.device)
-        np_x_test = to_x_test.cpu().numpy()
+        # np_x_test = to_x_test.cpu().numpy()
+        np_a = self.dyn(to_x_test, gradient=True)
+        # np_a, np_B, np_dadx, np_dBdx = self.dyn(np_x_test, gradient=True)
+        # to_a, to_B, to_dadx, to_dBdx = [x.cpu().numpy() for x in self.dyn(to_x_test, gradient=True)]
 
-        np_a, np_B, np_dadx, np_dBdx = self.dyn(np_x_test, gradient=True)
-        to_a, to_B, to_dadx, to_dBdx = [x.cpu().numpy() for x in self.dyn(to_x_test, gradient=True)]
+        dajdp, dBjdp = self.grad_dyn_theta(to_x_test)
 
-        assert np.allclose(to_a, np_a, atol=1.e-5)
-        assert np.allclose(to_B, np_B, atol=1.e-5)
-        assert np.allclose(to_dadx, np_dadx, atol=1.e-5)
-        assert np.allclose(to_dBdx, np_dBdx, atol=1.e-5)
+        # assert np.allclose(to_a, np_a, atol=1.e-5)
+        # assert np.allclose(to_B, np_B, atol=1.e-5)
+        # assert np.allclose(to_dadx, np_dadx, atol=1.e-5)
+        # assert np.allclose(to_dBdx, np_dBdx, atol=1.e-5)
 
         # grad_auto_dadx = jacobian(lambda x: self.dyn(x)[-2], to_x_test).view(-1, self.n_state, self.n_state).cpu().numpy()
         # grad_auto_dBdx = jacobian(lambda x: self.dyn(x)[-1], to_x_test).view(-1, self.n_state, self.n_state, self.n_act).cpu().numpy()

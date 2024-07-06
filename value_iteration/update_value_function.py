@@ -48,12 +48,17 @@ def update_value_function(step_i, value_fun_tar, system, mem_train, hyper, write
         trace_n = np.ceil(np.log(hyper["trace_weight_n"] / (1. - trace_l)) / np.log(trace_l)).astype(int)
         w_lambda = ((1. - trace_l) * trace_l ** torch.arange(0., trace_n, 1.)).view(1, -1, 1).to(value_fun_tar.device)
         w_lambda[0, -1, 0] = trace_l ** (trace_n - 1)
-        print('trace_n is',trace_n)
+        # print('trace_n is',trace_n)
 
         x_lim = torch.from_numpy(system.x_lim).float() if isinstance(system.x_lim, np.ndarray) else system.x_lim
         x_lim = x_lim.to(value_fun_tar.device).view(1, system.n_state, 1)
 
+        mem_train_list = list(mem_train)
+        num_iterations = len(mem_train_list)
+        print(f"需要执行的次数: {num_iterations}")
+
         for n_batch, batch_i in enumerate(mem_train):
+
             V0_tar, V0_diff, dV0dx_tar = [], [], []
 
             # Unpack the batch:
