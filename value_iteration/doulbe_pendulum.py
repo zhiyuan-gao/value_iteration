@@ -23,6 +23,588 @@ def theta_to_dict(theta_tensor):
     return change_para
 
 
+def compute_a(theta, x): 
+
+
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+    n_samples = x.shape[0]
+
+    Ir = theta[:,0,0].view(-1, 1, 1)
+    r1 = theta[:,1,0].view(-1, 1, 1)
+    I1 = theta[:,2,0].view(-1, 1, 1)
+    b1 = theta[:,3,0].view(-1, 1, 1)
+    cf1 = theta[:,4,0].view(-1, 1, 1)
+    r2 = theta[:,5,0].view(-1, 1, 1)
+    m2 = theta[:,6,0].view(-1, 1, 1)
+    I2 = theta[:,7,0].view(-1, 1, 1)
+    b2 = theta[:,8,0].view(-1, 1, 1)
+    cf2 = theta[:,9,0].view(-1, 1, 1)
+    # x = x.view(100, 4, 1)
+    q1, q2 = x[:, 0,:].view(-1, 1, 1), x[:, 1, :].view(-1, 1, 1)
+    dot_q1, dot_q2 = x[:, 2, :].view(-1, 1, 1), x[:, 3, :].view(-1, 1, 1)
+
+    # 定义矩阵计算中的中间变量
+    cos_q2 = torch.cos(q2)
+    sin_q1 = torch.sin(q1)
+    sin_q2 = torch.sin(q2)
+    sin_q1_q2 = torch.sin(q1 + q2)
+
+    # 定义矩阵a中的元素
+    a1 = dot_q1
+    a2 = dot_q2
+
+    numerator3 = (-0.3*dot_q1**2*m2*r2*sin_q2 - dot_q2*b2 - cf2*torch.atan(100*dot_q2) - 9.81*m2*r2*sin_q1_q2)*(I1*I2 - 6.0*I1*Ir + 0.3*I1*m2*r2*cos_q2 + I2**2 + 31.0*I2*Ir + 0.9*I2*m2*r2*cos_q2 + 0.09*I2*m2 - 222.0*Ir**2 + 7.5*Ir*m2*r2*cos_q2 - 0.54*Ir*m2 + 0.18*m2**2*r2**2*cos_q2**2 + 0.027*m2**2*r2*cos_q2)
+    denominator3 = (-I1**2*I2 - 36.0*I1**2*Ir - I1*I2**2 - 158.0*I1*I2*Ir - 0.6*I1*I2*m2*r2*cos_q2 - 0.18*I1*I2*m2 - 2628.0*I1*Ir**2 - 46.8*I1*Ir*m2*r2*cos_q2 - 6.48*I1*Ir*m2 + 0.09*I1*m2**2*r2**2*cos_q2**2 - 85.0*I2**2*Ir - 0.09*I2**2*m2 - 4441.0*I2*Ir**2 - 76.2*I2*Ir*m2*r2*cos_q2 - 14.22*I2*Ir*m2 + 0.09*I2*m2**2*r2**2*cos_q2**2 - 0.054*I2*m2**2*r2*cos_q2 - 0.0081*I2*m2**2 - 47952.0*Ir**3 - 1710.0*Ir**2*m2*r2*cos_q2 - 236.52*Ir**2*m2 - 11.79*Ir*m2**2*r2**2*cos_q2**2 - 4.212*Ir*m2**2*r2*cos_q2 - 0.2916*Ir*m2**2 + 0.054*m2**3*r2**3*cos_q2**3 + 0.0081*m2**3*r2**2*cos_q2**2)
+    numerator4 = (0.6*dot_q1*dot_q2*m2*r2*sin_q2 - dot_q1*b1 + 0.3*dot_q2**2*m2*r2*sin_q2 - cf1*torch.atan(100*dot_q1) - 9.81*m2*(r2*sin_q1_q2 + 0.3*sin_q1) - 5.96448*r1*sin_q1)*(-I1*I2 - 36.0*I1*Ir - I2**2 - 73.0*I2*Ir - 0.6*I2*m2*r2*cos_q2 - 0.09*I2*m2 - 1332.0*Ir**2 - 21.6*Ir*m2*r2*cos_q2 - 3.24*Ir*m2)
+    denominator4 = (-I1**2*I2 - 36.0*I1**2*Ir - I1*I2**2 - 158.0*I1*I2*Ir - 0.6*I1*I2*m2*r2*cos_q2 - 0.18*I1*I2*m2 - 2628.0*I1*Ir**2 - 46.8*I1*Ir*m2*r2*cos_q2 - 6.48*I1*Ir*m2 + 0.09*I1*m2**2*r2**2*cos_q2**2 - 85.0*I2**2*Ir - 0.09*I2**2*m2 - 4441.0*I2*Ir**2 - 76.2*I2*Ir*m2*r2*cos_q2 - 14.22*I2*Ir*m2 + 0.09*I2*m2**2*r2**2*cos_q2**2 - 0.054*I2*m2**2*r2*cos_q2 - 0.0081*I2*m2**2 - 47952.0*Ir**3 - 1710.0*Ir**2*m2*r2*cos_q2 - 236.52*Ir**2*m2 - 11.79*Ir*m2**2*r2**2*cos_q2**2 - 4.212*Ir*m2**2*r2*cos_q2 - 0.2916*Ir*m2**2 + 0.054*m2**3*r2**3*cos_q2**3 + 0.0081*m2**3*r2**2*cos_q2**2)
+
+    a3 = (numerator3 / denominator3) + (numerator4 / denominator4)
+
+    numerator5 = (I2 - 6.0*Ir + 0.3*m2*r2*cos_q2)*(0.6*dot_q1*dot_q2*m2*r2*sin_q2 - dot_q1*b1 + 0.3*dot_q2**2*m2*r2*sin_q2 - cf1*torch.atan(100*dot_q1) - 9.81*m2*(r2*sin_q1_q2 + 0.3*sin_q1) - 5.96448*r1*sin_q1)
+    denominator5 = (-I1*I2 - 36.0*I1*Ir - 85.0*I2*Ir - 0.09*I2*m2 - 1296.0*Ir**2 - 25.2*Ir*m2*r2*cos_q2 - 3.24*Ir*m2 + 0.09*m2**2*r2**2*cos_q2**2)
+    numerator6 = (-0.3*dot_q1**2*m2*r2*sin_q2 - dot_q2*b2 - cf2*torch.atan(100*dot_q2) - 9.81*m2*r2*sin_q1_q2)*(-I1 - I2 - 37.0*Ir - 0.6*m2*r2*cos_q2 - 0.09*m2)
+    denominator6 = (-I1*I2 - 36.0*I1*Ir - 85.0*I2*Ir - 0.09*I2*m2 - 1296.0*Ir**2 - 25.2*Ir*m2*r2*cos_q2 - 3.24*Ir*m2 + 0.09*m2**2*r2**2*cos_q2**2)
+
+    a4 = (numerator5 / denominator5) + (numerator6 / denominator6)
+    a = torch.cat((a1, a2, a3, a4), dim=1)
+    a.requires_grad_(True)
+
+    return a
+
+
+def compute_B(theta, x): 
+
+
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+    n_samples = x.shape[0]
+
+    Ir = theta[:,0,0].view(-1, 1, 1)
+    r1 = theta[:,1,0].view(-1, 1, 1)
+    I1 = theta[:,2,0].view(-1, 1, 1)
+    b1 = theta[:,3,0].view(-1, 1, 1)
+    cf1 = theta[:,4,0].view(-1, 1, 1)
+    r2 = theta[:,5,0].view(-1, 1, 1)
+    m2 = theta[:,6,0].view(-1, 1, 1)
+    I2 = theta[:,7,0].view(-1, 1, 1)
+    b2 = theta[:,8,0].view(-1, 1, 1)
+    cf2 = theta[:,9,0].view(-1, 1, 1)
+    # x = x.view(100, 4, 1)
+    q1, q2 = x[:, 0,:].view(-1, 1, 1), x[:, 1, :].view(-1, 1, 1)
+    dot_q1, dot_q2 = x[:, 2, :].view(-1, 1, 1), x[:, 3, :].view(-1, 1, 1)
+
+    # 定义矩阵计算中的中间变量
+    cos_q2 = torch.cos(q2)
+    sin_q1 = torch.sin(q1)
+    sin_q2 = torch.sin(q2)
+    sin_q1_q2 = torch.sin(q1 + q2)
+
+    B11 = torch.zeros(n_samples, 1, 1, device=device,requires_grad=True)
+    B12 = torch.zeros(n_samples, 1, 1, device=device,requires_grad=True)
+    B21 = torch.zeros(n_samples, 1, 1, device=device,requires_grad=True)
+    B22 = torch.zeros(n_samples, 1, 1, device=device,requires_grad=True)
+
+    B31 = (-I1*I2 - 36.0*I1*Ir - I2**2 - 73.0*I2*Ir - 0.6*I2*m2*r2*cos_q2 - 0.09*I2*m2 - 1332.0*Ir**2 - 21.6*Ir*m2*r2*cos_q2 - 3.24*Ir*m2) / \
+        (-I1**2*I2 - 36.0*I1**2*Ir - I1*I2**2 - 158.0*I1*I2*Ir - 0.6*I1*I2*m2*r2*cos_q2 - 0.18*I1*I2*m2 - 2628.0*I1*Ir**2 - 46.8*I1*Ir*m2*r2*cos_q2 - 6.48*I1*Ir*m2 + 0.09*I1*m2**2*r2**2*cos_q2**2 - 85.0*I2**2*Ir - 0.09*I2**2*m2 - 4441.0*I2*Ir**2 - 76.2*I2*Ir*m2*r2*cos_q2 - 14.22*I2*Ir*m2 + 0.09*I2*m2**2*r2**2*cos_q2**2 - 0.054*I2*m2**2*r2*cos_q2 - 0.0081*I2*m2**2 - 47952.0*Ir**3 - 1710.0*Ir**2*m2*r2*cos_q2 - 236.52*Ir**2*m2 - 11.79*Ir*m2**2*r2**2*cos_q2**2 - 4.212*Ir*m2**2*r2*cos_q2 - 0.2916*Ir*m2**2 + 0.054*m2**3*r2**3*cos_q2**3 + 0.0081*m2**3*r2**2*cos_q2**2)
+
+    B32 = (I1*I2 - 6.0*I1*Ir + 0.3*I1*m2*r2*cos_q2 + I2**2 + 31.0*I2*Ir + 0.9*I2*m2*r2*cos_q2 + 0.09*I2*m2 - 222.0*Ir**2 + 7.5*Ir*m2*r2*cos_q2 - 0.54*Ir*m2 + 0.18*m2**2*r2**2*cos_q2**2 + 0.027*m2**2*r2*cos_q2) / \
+        (-I1**2*I2 - 36.0*I1**2*Ir - I1*I2**2 - 158.0*I1*I2*Ir - 0.6*I1*I2*m2*r2*cos_q2 - 0.18*I1*I2*m2 - 2628.0*I1*Ir**2 - 46.8*I1*Ir*m2*r2*cos_q2 - 6.48*I1*Ir*m2 + 0.09*I1*m2**2*r2**2*cos_q2**2 - 85.0*I2**2*Ir - 0.09*I2**2*m2 - 4441.0*I2*Ir**2 - 76.2*I2*Ir*m2*r2*cos_q2 - 14.22*I2*Ir*m2 + 0.09*I2*m2**2*r2**2*cos_q2**2 - 0.054*I2*m2**2*r2*cos_q2 - 0.0081*I2*m2**2 - 47952.0*Ir**3 - 1710.0*Ir**2*m2*r2*cos_q2 - 236.52*Ir**2*m2 - 11.79*Ir*m2**2*r2**2*cos_q2**2 - 4.212*Ir*m2**2*r2*cos_q2 - 0.2916*Ir*m2**2 + 0.054*m2**3*r2**3*cos_q2**3 + 0.0081*m2**3*r2**2*cos_q2**2)
+
+    B41 = (I2 - 6.0*Ir + 0.3*m2*r2*cos_q2) / \
+        (-I1*I2 - 36.0*I1*Ir - 85.0*I2*Ir - 0.09*I2*m2 - 1296.0*Ir**2 - 25.2*Ir*m2*r2*cos_q2 - 3.24*Ir*m2 + 0.09*m2**2*r2**2*cos_q2**2)
+
+    B42 = (-I1 - I2 - 37.0*Ir - 0.6*m2*r2*cos_q2 - 0.09*m2) / \
+        (-I1*I2 - 36.0*I1*Ir - 85.0*I2*Ir - 0.09*I2*m2 - 1296.0*Ir**2 - 25.2*Ir*m2*r2*cos_q2 - 3.24*Ir*m2 + 0.09*m2**2*r2**2*cos_q2**2)
+
+
+    # 将每一行的两个元素拼接成一个张量，形状为 (n_samples, 1, 2)
+    row1 = torch.cat((B11, B12), dim=2)  # 形状 (n_samples, 1, 2)
+    row2 = torch.cat((B21, B22), dim=2)  # 形状 (n_samples, 1, 2)
+    row3 = torch.cat((B31, B32), dim=2)  # 形状 (n_samples, 1, 2)
+    row4 = torch.cat((B41, B42), dim=2)  # 形状 (n_samples, 1, 2)
+
+    # 将每一行拼接成最终的 B 矩阵，形状为 (n_samples, 4, 2)
+    B = torch.cat((row1, row2, row3, row4), dim=1)  
+    B.requires_grad_(True)
+    return B
+
+
+
+
+def compute_dadp_x_matrix(x):
+    # 将输入张量移动到 GPU
+    x = x.cuda()
+
+    # 从 x 中提取 q1, q2, dot_q1, dot_q2
+    q1 = x[:, 0, :].view(-1, 1)
+    q2 = x[:, 1, :].view(-1, 1)
+    dot_q1 = x[:, 2, :].view(-1, 1)
+    dot_q2 = x[:, 3, :].view(-1, 1)
+
+    # 定义 cos 和 sin 的函数
+    cos_q2 = torch.cos(q2)
+    sin_q2 = torch.sin(q2)
+    # cos_q1 = torch.cos(q1)
+    sin_q1 = torch.sin(q1)
+    sin_q1_plus_q2 = torch.sin(q1 + q2)
+
+    # 定义 atan 函数
+    atan_100_dot_q1 = torch.atan(100 * dot_q1)
+    atan_100_dot_q2 = torch.atan(100 * dot_q2)
+
+    # 计算 self.dadp_x 矩阵的每个元素
+    def element_0_2():
+        term1 = (-5.64732*cos_q2 - 9.5766) * (0.15687*dot_q1*dot_q2*sin_q2 - 0.005*dot_q1 + 0.078435*dot_q2**2*sin_q2 - 3.494322*sin_q1 - 2.5648245*sin_q1_plus_q2 - 0.093*atan_100_dot_q1)
+        denom1 = (0.00096507196192575*cos_q2**3 + 0.0011319770574*cos_q2**2 - 0.0013043991492*cos_q2 - 0.00152998944)
+        term1 /= denom1
+
+        term2 = 427192.021899475 * (-0.012518226*cos_q2 - 0.0146832) * (0.805918448475*cos_q2**2 + 2.864791314*cos_q2 + 2.24595372)
+        term2 *= (0.15687*dot_q1*dot_q2*sin_q2 - 0.005*dot_q1 + 0.078435*dot_q2**2*sin_q2 - 3.494322*sin_q1 - 2.5648245*sin_q1_plus_q2 - 0.093*atan_100_dot_q1)
+        term2 /= (0.630770341738927*cos_q2**3 + 0.739859392362865*cos_q2**2 - 0.852554347826087*cos_q2 - 1)**2
+
+        term3 = (1.960875*cos_q2 + 1.8486) * (-0.078435*dot_q1**2*sin_q2 - 0.005*dot_q2 - 2.5648245*sin_q1_plus_q2 - 0.14*atan_100_dot_q2)
+        term3 /= denom1
+
+        term4 = 427192.021899475 * (0.01230409845*cos_q2**2 + 0.026950266*cos_q2 + 0.0146832) * (0.805918448475*cos_q2**2 + 2.864791314*cos_q2 + 2.24595372)
+        term4 *= (-0.078435*dot_q1**2*sin_q2 - 0.005*dot_q2 - 2.5648245*sin_q1_plus_q2 - 0.14*atan_100_dot_q2)
+        term4 /= (0.630770341738927*cos_q2**3 + 0.739859392362865*cos_q2**2 - 0.852554347826087*cos_q2 - 1)**2
+
+        return (term1 + term2 + term3 + term4).view(-1, 1)
+
+    def element_0_3():
+        term1 = 14463.0130934286 * (-0.15687*cos_q2 - 0.184) * (6.58854*cos_q2 + 10.5342)
+        term1 *= (-0.078435*dot_q1**2*sin_q2 - 0.005*dot_q2 - 2.5648245*sin_q1_plus_q2 - 0.14*atan_100_dot_q2)
+        term1 /= (0.739859392362865*cos_q2**2 - 1)**2
+
+        term2 = 14463.0130934286 * (0.078435*cos_q2 + 0.0798) * (6.58854*cos_q2 + 10.5342)
+        term2 *= (0.15687*dot_q1*dot_q2*sin_q2 - 0.005*dot_q1 + 0.078435*dot_q2**2*sin_q2 - 3.494322*sin_q1 - 2.5648245*sin_q1_plus_q2 - 0.093*atan_100_dot_q1)
+        term2 /= (0.739859392362865*cos_q2**2 - 1)**2
+
+        term3 = -37.0 * (-0.078435*dot_q1**2*sin_q2 - 0.005*dot_q2 - 2.5648245*sin_q1_plus_q2 - 0.14*atan_100_dot_q2)
+        term3 /= (0.006152049225*cos_q2**2 - 0.00831516)
+
+        term4 = -6.0 * (0.15687*dot_q1*dot_q2*sin_q2 - 0.005*dot_q1 + 0.078435*dot_q2**2*sin_q2 - 3.494322*sin_q1 - 2.5648245*sin_q1_plus_q2 - 0.093*atan_100_dot_q1)
+        term4 /= (0.006152049225*cos_q2**2 - 0.00831516)
+
+        return (term1 + term2 + term3 + term4).view(-1, 1)
+
+    def element_1_2():
+        term = -5.96448 * (-0.012518226*cos_q2 - 0.0146832) * sin_q1
+        term /= (0.00096507196192575*cos_q2**3 + 0.0011319770574*cos_q2**2 - 0.0013043991492*cos_q2 - 0.00152998944)
+        return term.view(-1, 1)
+
+    def element_1_3():
+        term = -5.96448 * (0.078435*cos_q2 + 0.0798) * sin_q1
+        term /= (0.006152049225*cos_q2**2 - 0.00831516)
+        return term.view(-1, 1)
+
+    def element_2_2():
+        term1 = 427192.021899475 * (-0.012518226*cos_q2 - 0.0146832) * (-0.006152049225*cos_q2**2 + 0.012518226*cos_q2 + 0.02299836)
+        term1 *= (0.15687*dot_q1*dot_q2*sin_q2 - 0.005*dot_q1 + 0.078435*dot_q2**2*sin_q2 - 3.494322*sin_q1 - 2.5648245*sin_q1_plus_q2 - 0.093*atan_100_dot_q1)
+        term1 /= (0.630770341738927*cos_q2**3 + 0.739859392362865*cos_q2**2 - 0.852554347826087*cos_q2 - 1)**2
+
+        term2 = (0.078435*cos_q2 + 0.0798) * (-0.078435*dot_q1**2*sin_q2 - 0.005*dot_q2 - 2.5648245*sin_q1_plus_q2 - 0.14*atan_100_dot_q2)
+        term2 /= (0.00096507196192575*cos_q2**3 + 0.0011319770574*cos_q2**2 - 0.0013043991492*cos_q2 - 0.00152998944)
+
+        term3 = 427192.021899475 * (-0.006152049225*cos_q2**2 + 0.012518226*cos_q2 + 0.02299836) * (0.01230409845*cos_q2**2 + 0.026950266*cos_q2 + 0.0146832)
+        term3 *= (-0.078435*dot_q1**2*sin_q2 - 0.005*dot_q2 - 2.5648245*sin_q1_plus_q2 - 0.14*atan_100_dot_q2)
+        term3 /= (0.630770341738927*cos_q2**3 + 0.739859392362865*cos_q2**2 - 0.852554347826087*cos_q2 - 1)**2
+
+        term4 = -0.0798 * (0.15687*dot_q1*dot_q2*sin_q2 - 0.005*dot_q1 + 0.078435*dot_q2**2*sin_q2 - 3.494322*sin_q1 - 2.5648245*sin_q1_plus_q2 - 0.093*atan_100_dot_q1)
+        term4 /= (0.00096507196192575*cos_q2**3 + 0.0011319770574*cos_q2**2 - 0.0013043991492*cos_q2 - 0.00152998944)
+
+        return (term1 + term2 + term3 + term4).view(-1, 1)
+
+    def element_2_3():
+        term1 = 1154.1484448556 * (-0.15687*cos_q2 - 0.184) * (-0.078435*dot_q1**2*sin_q2 - 0.005*dot_q2 - 2.5648245*sin_q1_plus_q2 - 0.14*atan_100_dot_q2)
+        term1 /= (0.739859392362865*cos_q2**2 - 1)**2
+
+        term2 = 1154.1484448556 * (0.078435*cos_q2 + 0.0798) * (0.15687*dot_q1*dot_q2*sin_q2 - 0.005*dot_q1 + 0.078435*dot_q2**2*sin_q2 - 3.494322*sin_q1 - 2.5648245*sin_q1_plus_q2 - 0.093*atan_100_dot_q1)
+        term2 /= (0.739859392362865*cos_q2**2 - 1)**2
+
+        term3 = (-0.078435*dot_q1**2*sin_q2 - 0.005*dot_q2 - 2.5648245*sin_q1_plus_q2 - 0.14*atan_100_dot_q2)
+        term3 /= (0.006152049225*cos_q2**2 - 0.00831516)
+
+        return (term1 + term2 - term3).view(-1, 1)
+
+    def element_3_2():
+        term = -dot_q1 * (-0.012518226*cos_q2 - 0.0146832)
+        term /= (0.00096507196192575*cos_q2**3 + 0.0011319770574*cos_q2**2 - 0.0013043991492*cos_q2 - 0.00152998944)
+        return term.view(-1, 1)
+
+    def element_3_3():
+        term = -dot_q1 * (0.078435*cos_q2 + 0.0798)
+        term /= (0.006152049225*cos_q2**2 - 0.00831516)
+        return term.view(-1, 1)
+
+    def element_4_2():
+        term = -(-0.012518226*cos_q2 - 0.0146832) * atan_100_dot_q1
+        term /= (0.00096507196192575*cos_q2**3 + 0.0011319770574*cos_q2**2 - 0.0013043991492*cos_q2 - 0.00152998944)
+        return term.view(-1, 1)
+
+    def element_4_3():
+        term = -(0.078435*cos_q2 + 0.0798) * atan_100_dot_q1
+        term /= (0.006152049225*cos_q2**2 - 0.00831516)
+        return term.view(-1, 1)
+
+    def element_5_2():
+        term1 = (-0.189*dot_q1**2*sin_q2 - 6.1803*sin_q1_plus_q2) * (0.01230409845*cos_q2**2 + 0.026950266*cos_q2 + 0.0146832)
+        term1 /= (0.00096507196192575*cos_q2**3 + 0.0011319770574*cos_q2**2 - 0.0013043991492*cos_q2 - 0.00152998944)
+
+        term2 = (-0.012518226*cos_q2 - 0.0146832) * (0.378*dot_q1*dot_q2*sin_q2 + 0.189*dot_q2**2*sin_q2 - 6.1803*sin_q1_plus_q2)
+        term2 /= (0.00096507196192575*cos_q2**3 + 0.0011319770574*cos_q2**2 - 0.0013043991492*cos_q2 - 0.00152998944)
+
+        term3 = 427192.021899475 * (-0.012518226*cos_q2 - 0.0146832) * (-0.00697642382115*cos_q2**3 - 0.00545531112*cos_q2**2 + 0.00314313048*cos_q2)
+        term3 *= (0.15687*dot_q1*dot_q2*sin_q2 - 0.005*dot_q1 + 0.078435*dot_q2**2*sin_q2 - 3.494322*sin_q1 - 2.5648245*sin_q1_plus_q2 - 0.093*atan_100_dot_q1)
+        term3 /= (0.630770341738927*cos_q2**3 + 0.739859392362865*cos_q2**2 - 0.852554347826087*cos_q2 - 1)**2
+
+        term4 = (0.05929686*cos_q2**2 + 0.0649404*cos_q2) * (-0.078435*dot_q1**2*sin_q2 - 0.005*dot_q2 - 2.5648245*sin_q1_plus_q2 - 0.14*atan_100_dot_q2)
+        term4 /= (0.00096507196192575*cos_q2**3 + 0.0011319770574*cos_q2**2 - 0.0013043991492*cos_q2 - 0.00152998944)
+
+        term5 = 427192.021899475 * (0.01230409845*cos_q2**2 + 0.026950266*cos_q2 + 0.0146832) * (-0.00697642382115*cos_q2**3 - 0.00545531112*cos_q2**2 + 0.00314313048*cos_q2)
+        term5 *= (-0.078435*dot_q1**2*sin_q2 - 0.005*dot_q2 - 2.5648245*sin_q1_plus_q2 - 0.14*atan_100_dot_q2)
+        term5 /= (0.630770341738927*cos_q2**3 + 0.739859392362865*cos_q2**2 - 0.852554347826087*cos_q2 - 1)**2
+
+        term6 = -0.0301644 * (0.15687*dot_q1*dot_q2*sin_q2 - 0.005*dot_q1 + 0.078435*dot_q2**2*sin_q2 - 3.494322*sin_q1 - 2.5648245*sin_q1_plus_q2 - 0.093*atan_100_dot_q1) * cos_q2
+        term6 /= (0.00096507196192575*cos_q2**3 + 0.0011319770574*cos_q2**2 - 0.0013043991492*cos_q2 - 0.00152998944)
+
+        return (term1 + term2 + term3 + term4 + term5 + term6).view(-1, 1)
+
+    def element_5_3():
+        term1 = (-0.189*dot_q1**2*sin_q2 - 6.1803*sin_q1_plus_q2) * (-0.15687*cos_q2 - 0.184)
+        term1 /= (0.006152049225*cos_q2**2 - 0.00831516)
+
+        term2 = -428.805631289602 * (-0.15687*cos_q2 - 0.184) * (-0.078435*dot_q1**2*sin_q2 - 0.005*dot_q2 - 2.5648245*sin_q1_plus_q2 - 0.14*atan_100_dot_q2) * cos_q2**2
+        term2 /= (0.739859392362865*cos_q2**2 - 1)**2
+
+        term3 = -428.805631289602 * (0.078435*cos_q2 + 0.0798) * (0.15687*dot_q1*dot_q2*sin_q2 - 0.005*dot_q1 + 0.078435*dot_q2**2*sin_q2 - 3.494322*sin_q1 - 2.5648245*sin_q1_plus_q2 - 0.093*atan_100_dot_q1) * cos_q2**2
+        term3 /= (0.739859392362865*cos_q2**2 - 1)**2
+
+        term4 = (0.078435*cos_q2 + 0.0798) * (0.378*dot_q1*dot_q2*sin_q2 + 0.189*dot_q2**2*sin_q2 - 6.1803*sin_q1_plus_q2)
+        term4 /= (0.006152049225*cos_q2**2 - 0.00831516)
+
+        term5 = -0.378 * (-0.078435*dot_q1**2*sin_q2 - 0.005*dot_q2 - 2.5648245*sin_q1_plus_q2 - 0.14*atan_100_dot_q2) * cos_q2
+        term5 /= (0.006152049225*cos_q2**2 - 0.00831516)
+
+        term6 = 0.189 * (0.15687*dot_q1*dot_q2*sin_q2 - 0.005*dot_q1 + 0.078435*dot_q2**2*sin_q2 - 3.494322*sin_q1 - 2.5648245*sin_q1_plus_q2 - 0.093*atan_100_dot_q1) * cos_q2
+        term6 /= (0.006152049225*cos_q2**2 - 0.00831516)
+
+        return (term1 + term2 + term3 + term4 + term5 + term6).view(-1, 1)
+
+    def element_6_2():
+        term1 = (-0.1245*dot_q1**2*sin_q2 - 4.07115*sin_q1_plus_q2) * (0.01230409845*cos_q2**2 + 0.026950266*cos_q2 + 0.0146832)
+        term1 /= (0.00096507196192575*cos_q2**3 + 0.0011319770574*cos_q2**2 - 0.0013043991492*cos_q2 - 0.00152998944)
+
+        term2 = (-0.0198702*cos_q2 - 0.007182) * (0.15687*dot_q1*dot_q2*sin_q2 - 0.005*dot_q1 + 0.078435*dot_q2**2*sin_q2 - 3.494322*sin_q1 - 2.5648245*sin_q1_plus_q2 - 0.093*atan_100_dot_q1)
+        term2 /= (0.00096507196192575*cos_q2**3 + 0.0011319770574*cos_q2**2 - 0.0013043991492*cos_q2 - 0.00152998944)
+
+        term3 = (-0.012518226*cos_q2 - 0.0146832) * (0.249*dot_q1*dot_q2*sin_q2 + 0.1245*dot_q2**2*sin_q2 - 2.943*sin_q1 - 4.07115*sin_q1_plus_q2)
+        term3 /= (0.00096507196192575*cos_q2**3 + 0.0011319770574*cos_q2**2 - 0.0013043991492*cos_q2 - 0.00152998944)
+
+        term4 = 427192.021899475 * (-0.012518226*cos_q2 - 0.0146832) * (-0.004595580771075*cos_q2**3 - 0.00414726239025*cos_q2**2 + 0.00319711518*cos_q2 + 0.0020698524)
+        term4 *= (0.15687*dot_q1*dot_q2*sin_q2 - 0.005*dot_q1 + 0.078435*dot_q2**2*sin_q2 - 3.494322*sin_q1 - 2.5648245*sin_q1_plus_q2 - 0.093*atan_100_dot_q1)
+        term4 /= (0.630770341738927*cos_q2**3 + 0.739859392362865*cos_q2**2 - 0.852554347826087*cos_q2 - 1)**2
+
+        term5 = 427192.021899475 * (0.01230409845*cos_q2**2 + 0.026950266*cos_q2 + 0.0146832) * (-0.078435*dot_q1**2*sin_q2 - 0.005*dot_q2 - 2.5648245*sin_q1_plus_q2 - 0.14*atan_100_dot_q2)
+        term5 *= (-0.004595580771075*cos_q2**3 - 0.00414726239025*cos_q2**2 + 0.00319711518*cos_q2 + 0.0020698524)
+        term5 /= (0.630770341738927*cos_q2**3 + 0.739859392362865*cos_q2**2 - 0.852554347826087*cos_q2 - 1)**2
+
+        term6 = (0.03906063*cos_q2**2 + 0.04983735*cos_q2 + 0.007182) * (-0.078435*dot_q1**2*sin_q2 - 0.005*dot_q2 - 2.5648245*sin_q1_plus_q2 - 0.14*atan_100_dot_q2)
+        term6 /= (0.00096507196192575*cos_q2**3 + 0.0011319770574*cos_q2**2 - 0.0013043991492*cos_q2 - 0.00152998944)
+
+        return (term1 + term2 + term3 + term4 + term5 + term6).view(-1, 1)
+
+    def element_6_3():
+        term1 = 14463.0130934286 * (0.007182 - 0.019530315*cos_q2**2) * (-0.15687*cos_q2 - 0.184) * (-0.078435*dot_q1**2*sin_q2 - 0.005*dot_q2 - 2.5648245*sin_q1_plus_q2 - 0.14*atan_100_dot_q2)
+        term1 /= (0.739859392362865*cos_q2**2 - 1)**2
+
+        term2 = 14463.0130934286 * (0.007182 - 0.019530315*cos_q2**2) * (0.078435*cos_q2 + 0.0798)
+        term2 *= (0.15687*dot_q1*dot_q2*sin_q2 - 0.005*dot_q1 + 0.078435*dot_q2**2*sin_q2 - 3.494322*sin_q1 - 2.5648245*sin_q1_plus_q2 - 0.093*atan_100_dot_q1)
+        term2 /= (0.739859392362865*cos_q2**2 - 1)**2
+
+        term3 = (-0.1245*dot_q1**2*sin_q2 - 4.07115*sin_q1_plus_q2) * (-0.15687*cos_q2 - 0.184)
+        term3 /= (0.006152049225*cos_q2**2 - 0.00831516)
+
+        term4 = (-0.249*cos_q2 - 0.09) * (-0.078435*dot_q1**2*sin_q2 - 0.005*dot_q2 - 2.5648245*sin_q1_plus_q2 - 0.14*atan_100_dot_q2)
+        term4 /= (0.006152049225*cos_q2**2 - 0.00831516)
+
+        term5 = (0.078435*cos_q2 + 0.0798) * (0.249*dot_q1*dot_q2*sin_q2 + 0.1245*dot_q2**2*sin_q2 - 2.943*sin_q1 - 4.07115*sin_q1_plus_q2)
+        term5 /= (0.006152049225*cos_q2**2 - 0.00831516)
+
+        term6 = 0.1245 * (0.15687*dot_q1*dot_q2*sin_q2 - 0.005*dot_q1 + 0.078435*dot_q2**2*sin_q2 - 3.494322*sin_q1 - 2.5648245*sin_q1_plus_q2 - 0.093*atan_100_dot_q1) * cos_q2
+        term6 /= (0.006152049225*cos_q2**2 - 0.00831516)
+
+        return (term1 + term2 + term3 + term4 + term5 + term6).view(-1, 1)
+
+    def element_7_2():
+        term1 = (-0.15687*cos_q2 - 0.2638) * (0.15687*dot_q1*dot_q2*sin_q2 - 0.005*dot_q1 + 0.078435*dot_q2**2*sin_q2 - 3.494322*sin_q1 - 2.5648245*sin_q1_plus_q2 - 0.093*atan_100_dot_q1)
+        term1 /= (0.00096507196192575*cos_q2**3 + 0.0011319770574*cos_q2**2 - 0.0013043991492*cos_q2 - 0.00152998944)
+
+        term2 = 427192.021899475 * (-0.012518226*cos_q2 - 0.0146832) * (-0.006152049225*cos_q2**2 + 0.016345854*cos_q2 + 0.02748796)
+        term2 *= (0.15687*dot_q1*dot_q2*sin_q2 - 0.005*dot_q1 + 0.078435*dot_q2**2*sin_q2 - 3.494322*sin_q1 - 2.5648245*sin_q1_plus_q2 - 0.093*atan_100_dot_q1)
+        term2 /= (0.630770341738927*cos_q2**3 + 0.739859392362865*cos_q2**2 - 0.852554347826087*cos_q2 - 1)**2
+
+        term3 = (0.235305*cos_q2 + 0.2638) * (-0.078435*dot_q1**2*sin_q2 - 0.005*dot_q2 - 2.5648245*sin_q1_plus_q2 - 0.14*atan_100_dot_q2)
+        term3 /= (0.00096507196192575*cos_q2**3 + 0.0011319770574*cos_q2**2 - 0.0013043991492*cos_q2 - 0.00152998944)
+
+        term4 = 427192.021899475 * (-0.006152049225*cos_q2**2 + 0.016345854*cos_q2 + 0.02748796) * (0.01230409845*cos_q2**2 + 0.026950266*cos_q2 + 0.0146832)
+        term4 *= (-0.078435*dot_q1**2*sin_q2 - 0.005*dot_q2 - 2.5648245*sin_q1_plus_q2 - 0.14*atan_100_dot_q2)
+        term4 /= (0.630770341738927*cos_q2**3 + 0.739859392362865*cos_q2**2 - 0.852554347826087*cos_q2 - 1)**2
+
+        return (term1 + term2 + term3 + term4).view(-1, 1)
+
+    def element_7_3():
+        term1 = 1507.04596433526 * (-0.15687*cos_q2 - 0.184) * (-0.078435*dot_q1**2*sin_q2 - 0.005*dot_q2 - 2.5648245*sin_q1_plus_q2 - 0.14*atan_100_dot_q2)
+        term1 /= (0.739859392362865*cos_q2**2 - 1)**2
+
+        term2 = 1507.04596433526 * (0.078435*cos_q2 + 0.0798) * (0.15687*dot_q1*dot_q2*sin_q2 - 0.005*dot_q1 + 0.078435*dot_q2**2*sin_q2 - 3.494322*sin_q1 - 2.5648245*sin_q1_plus_q2 - 0.093*atan_100_dot_q1)
+        term2 /= (0.739859392362865*cos_q2**2 - 1)**2
+
+        term3 = (-0.078435*dot_q1**2*sin_q2 - 0.005*dot_q2 - 2.5648245*sin_q1_plus_q2 - 0.14*atan_100_dot_q2)
+        term3 /= (0.006152049225*cos_q2**2 - 0.00831516)
+
+        term4 = (0.15687*dot_q1*dot_q2*sin_q2 - 0.005*dot_q1 + 0.078435*dot_q2**2*sin_q2 - 3.494322*sin_q1 - 2.5648245*sin_q1_plus_q2 - 0.093*atan_100_dot_q1)
+        term4 /= (0.006152049225*cos_q2**2 - 0.00831516)
+
+        return (term1 + term2 - term3 + term4).view(-1, 1)
+
+    def element_8_2():
+        term = -dot_q2 * (0.01230409845*cos_q2**2 + 0.026950266*cos_q2 + 0.0146832)
+        term /= (0.00096507196192575*cos_q2**3 + 0.0011319770574*cos_q2**2 - 0.0013043991492*cos_q2 - 0.00152998944)
+        return term.view(-1, 1)
+
+    def element_8_3():
+        term = -dot_q2 * (-0.15687*cos_q2 - 0.184)
+        term /= (0.006152049225*cos_q2**2 - 0.00831516)
+        return term.view(-1, 1)
+
+    def element_9_2():
+        term = -(0.01230409845*cos_q2**2 + 0.026950266*cos_q2 + 0.0146832) * torch.atan(100*dot_q2)
+        term /= (0.00096507196192575*cos_q2**3 + 0.0011319770574*cos_q2**2 - 0.0013043991492*cos_q2 - 0.00152998944)
+        return term.view(-1, 1)
+
+    def element_9_3():
+        term = -(-0.15687*cos_q2 - 0.184) * torch.atan(100*dot_q2)
+        term /= (0.006152049225*cos_q2**2 - 0.00831516)
+        return term.view(-1, 1)
+
+    # 使用这些函数计算矩阵 self.dadp_x
+    dadp_x = torch.zeros((10, 4, x.size(0)), device=x.device)
+
+    # 填充矩阵元素
+    dadp_x[0, 2, :] = element_0_2().view(-1)
+    dadp_x[0, 3, :] = element_0_3().view(-1)
+    dadp_x[1, 2, :] = element_1_2().view(-1)
+    dadp_x[1, 3, :] = element_1_3().view(-1)
+    dadp_x[2, 2, :] = element_2_2().view(-1)
+    dadp_x[2, 3, :] = element_2_3().view(-1)
+    dadp_x[3, 2, :] = element_3_2().view(-1)
+    dadp_x[3, 3, :] = element_3_3().view(-1)
+    dadp_x[4, 2, :] = element_4_2().view(-1)
+    dadp_x[4, 3, :] = element_4_3().view(-1)
+    dadp_x[5, 2, :] = element_5_2().view(-1)
+    dadp_x[5, 3, :] = element_5_3().view(-1)
+    dadp_x[6, 2, :] = element_6_2().view(-1)
+    dadp_x[6, 3, :] = element_6_3().view(-1)
+    dadp_x[7, 2, :] = element_7_2().view(-1)
+    dadp_x[7, 3, :] = element_7_3().view(-1)
+    dadp_x[8, 2, :] = element_8_2().view(-1)
+    dadp_x[8, 3, :] = element_8_3().view(-1)
+    dadp_x[9, 2, :] = element_9_2().view(-1)
+    dadp_x[9, 3, :] = element_9_3().view(-1)
+
+
+    # 继续计算并填充 dadp_x 的其他元素
+    return dadp_x.permute(2, 0, 1)
+
+
+def compute_dBdp_x_matrix(x):
+    device = x.device
+    q1, q2 = x[:, 0, :].view(-1, 1, 1), x[:, 1, :].view(-1, 1, 1)
+    dot_q1, dot_q2 = x[:, 2, :].view(-1, 1, 1), x[:, 3, :].view(-1, 1, 1)
+    cos_q2 = torch.cos(q2).to(device)
+    # sin_q2 = torch.sin(q2).to(device)
+    # sin_q1 = torch.sin(q1).to(device)
+    # sin_q1_plus_q2 = torch.sin(q1 + q2).to(device)
+    # atan_100_dot_q1 = torch.atan(100 * dot_q1).to(device)
+    # atan_100_dot_q2 = torch.atan(100 * dot_q2).to(device)
+
+    dBdp_x = torch.zeros((10, 4, 2, x.shape[0]), device=device)
+
+    def element_0_2_0():
+        term1 = (-5.64732 * cos_q2 - 9.5766)
+        term1 /= (0.00096507196192575 * cos_q2 ** 3 + 0.0011319770574 * cos_q2 ** 2 - 0.0013043991492 * cos_q2 - 0.00152998944)
+        term2 = 427192.021899475 * (-0.012518226 * cos_q2 - 0.0146832)
+        term2 *= (0.805918448475 * cos_q2 ** 2 + 2.864791314 * cos_q2 + 2.24595372)
+        term2 /= (0.630770341738927 * cos_q2 ** 3 + 0.739859392362865 * cos_q2 ** 2 - 0.852554347826087 * cos_q2 - 1) ** 2
+        return term1 + term2
+
+    def element_0_2_1():
+        term1 = (1.960875 * cos_q2 + 1.8486)
+        term1 /= (0.00096507196192575 * cos_q2 ** 3 + 0.0011319770574 * cos_q2 ** 2 - 0.0013043991492 * cos_q2 - 0.00152998944)
+        term2 = 427192.021899475 * (0.01230409845 * cos_q2 ** 2 + 0.026950266 * cos_q2 + 0.0146832)
+        term2 *= (0.805918448475 * cos_q2 ** 2 + 2.864791314 * cos_q2 + 2.24595372)
+        term2 /= (0.630770341738927 * cos_q2 ** 3 + 0.739859392362865 * cos_q2 ** 2 - 0.852554347826087 * cos_q2 - 1) ** 2
+        return term1 + term2
+
+    def element_0_3_0():
+        term1 = 14463.0130934286 * (0.078435 * cos_q2 + 0.0798)
+        term1 *= (6.58854 * cos_q2 + 10.5342)
+        term1 /= (0.739859392362865 * cos_q2 ** 2 - 1) ** 2
+        term2 = -6.0 / (0.006152049225 * cos_q2 ** 2 - 0.00831516)
+        return term1 + term2
+
+    def element_0_3_1():
+        term1 = 14463.0130934286 * (-0.15687 * cos_q2 - 0.184)
+        term1 *= (6.58854 * cos_q2 + 10.5342)
+        term1 /= (0.739859392362865 * cos_q2 ** 2 - 1) ** 2
+        term2 = -37.0 / (0.006152049225 * cos_q2 ** 2 - 0.00831516)
+        return term1 + term2
+
+    def element_2_2_0():
+        term1 = 427192.021899475 * (-0.012518226 * cos_q2 - 0.0146832)
+        term1 *= (-0.006152049225 * cos_q2 ** 2 + 0.012518226 * cos_q2 + 0.02299836)
+        term1 /= (0.630770341738927 * cos_q2 ** 3 + 0.739859392362865 * cos_q2 ** 2 - 0.852554347826087 * cos_q2 - 1) ** 2
+        term2 = -0.0798 / (0.00096507196192575 * cos_q2 ** 3 + 0.0011319770574 * cos_q2 ** 2 - 0.0013043991492 * cos_q2 - 0.00152998944)
+        return term1 + term2
+
+    def element_2_2_1():
+        term1 = (0.078435 * cos_q2 + 0.0798)
+        term1 /= (0.00096507196192575 * cos_q2 ** 3 + 0.0011319770574 * cos_q2 ** 2 - 0.0013043991492 * cos_q2 - 0.00152998944)
+        term2 = 427192.021899475 * (-0.006152049225 * cos_q2 ** 2 + 0.012518226 * cos_q2 + 0.02299836)
+        term2 *= (0.01230409845 * cos_q2 ** 2 + 0.026950266 * cos_q2 + 0.0146832)
+        term2 /= (0.630770341738927 * cos_q2 ** 3 + 0.739859392362865 * cos_q2 ** 2 - 0.852554347826087 * cos_q2 - 1) ** 2
+        return term1 + term2
+
+    def element_2_3_0():
+        term1 = 1154.1484448556 * (0.078435 * cos_q2 + 0.0798)
+        term1 /= (0.739859392362865 * cos_q2 ** 2 - 1) ** 2
+        return term1
+
+    def element_2_3_1():
+        term1 = 1154.1484448556 * (-0.15687 * cos_q2 - 0.184)
+        term1 /= (0.739859392362865 * cos_q2 ** 2 - 1) ** 2
+        term2 = -1 / (0.006152049225 * cos_q2 ** 2 - 0.00831516)
+        return term1 + term2
+
+    def element_5_2_0():
+        term1 = 427192.021899475 * (-0.012518226 * cos_q2 - 0.0146832)
+        term1 *= (-0.00697642382115 * cos_q2 ** 3 - 0.00545531112 * cos_q2 ** 2 + 0.00314313048 * cos_q2)
+        term1 /= (0.630770341738927 * cos_q2 ** 3 + 0.739859392362865 * cos_q2 ** 2 - 0.852554347826087 * cos_q2 - 1) ** 2
+        term2 = -0.0301644 * cos_q2
+        term2 /= (0.00096507196192575 * cos_q2 ** 3 + 0.0011319770574 * cos_q2 ** 2 - 0.0013043991492 * cos_q2 - 0.00152998944)
+        return term1 + term2
+
+    def element_5_2_1():
+        term1 = (0.05929686 * cos_q2 ** 2 + 0.0649404 * cos_q2)
+        term1 /= (0.00096507196192575 * cos_q2 ** 3 + 0.0011319770574 * cos_q2 ** 2 - 0.0013043991492 * cos_q2 - 0.00152998944)
+        term2 = 427192.021899475 * (0.01230409845 * cos_q2 ** 2 + 0.026950266 * cos_q2 + 0.0146832)
+        term2 *= (-0.00697642382115 * cos_q2 ** 3 - 0.00545531112 * cos_q2 ** 2 + 0.00314313048 * cos_q2)
+        term2 /= (0.630770341738927 * cos_q2 ** 3 + 0.739859392362865 * cos_q2 ** 2 - 0.852554347826087 * cos_q2 - 1) ** 2
+        return term1 + term2
+
+    def element_5_3_0():
+        term1 = -428.805631289602 * (0.078435 * cos_q2 + 0.0798) * cos_q2 ** 2
+        term1 /= (0.739859392362865 * cos_q2 ** 2 - 1) ** 2
+        term2 = 0.189 * cos_q2
+        term2 /= (0.006152049225 * cos_q2 ** 2 - 0.00831516)
+        return term1 + term2
+
+    def element_5_3_1():
+        term1 = -428.805631289602 * (-0.15687 * cos_q2 - 0.184) * cos_q2 ** 2
+        term1 /= (0.739859392362865 * cos_q2 ** 2 - 1) ** 2
+        term2 = -0.378 * cos_q2
+        term2 /= (0.006152049225 * cos_q2 ** 2 - 0.00831516)
+        return term1 + term2
+
+    def element_6_2_0():
+        term1 = (-0.0198702 * cos_q2 - 0.007182)
+        term1 /= (0.00096507196192575 * cos_q2 ** 3 + 0.0011319770574 * cos_q2 ** 2 - 0.0013043991492 * cos_q2 - 0.00152998944)
+        term2 = 427192.021899475 * (-0.012518226 * cos_q2 - 0.0146832)
+        term2 *= (-0.004595580771075 * cos_q2 ** 3 - 0.00414726239025 * cos_q2 ** 2 + 0.00319711518 * cos_q2 + 0.0020698524)
+        term2 /= (0.630770341738927 * cos_q2 ** 3 + 0.739859392362865 * cos_q2 ** 2 - 0.852554347826087 * cos_q2 - 1) ** 2
+        return term1 + term2
+
+    def element_6_2_1():
+        term1 = 427192.021899475 * (0.01230409845 * cos_q2 ** 2 + 0.026950266 * cos_q2 + 0.0146832)
+        term1 *= (-0.004595580771075 * cos_q2 ** 3 - 0.00414726239025 * cos_q2 ** 2 + 0.00319711518 * cos_q2 + 0.0020698524)
+        term1 /= (0.630770341738927 * cos_q2 ** 3 + 0.739859392362865 * cos_q2 ** 2 - 0.852554347826087 * cos_q2 - 1) ** 2
+        term2 = (0.03906063 * cos_q2 ** 2 + 0.04983735 * cos_q2 + 0.007182)
+        term2 /= (0.00096507196192575 * cos_q2 ** 3 + 0.0011319770574 * cos_q2 ** 2 - 0.0013043991492 * cos_q2 - 0.00152998944)
+        return term1 + term2
+
+    def element_6_3_0():
+        term1 = 14463.0130934286 * (0.007182 - 0.019530315 * cos_q2 ** 2)
+        term1 *= (0.078435 * cos_q2 + 0.0798)
+        term1 /= (0.739859392362865 * cos_q2 ** 2 - 1) ** 2
+        term2 = 0.1245 * cos_q2
+        term2 /= (0.006152049225 * cos_q2 ** 2 - 0.00831516)
+        return term1 + term2
+
+    def element_6_3_1():
+        term1 = 14463.0130934286 * (0.007182 - 0.019530315 * cos_q2 ** 2)
+        term1 *= (-0.15687 * cos_q2 - 0.184)
+        term1 /= (0.739859392362865 * cos_q2 ** 2 - 1) ** 2
+        term2 = (-0.249 * cos_q2 - 0.09)
+        term2 /= (0.006152049225 * cos_q2 ** 2 - 0.00831516)
+        return term1 + term2
+
+    def element_7_2_0():
+        term1 = (-0.15687 * cos_q2 - 0.2638)
+        term1 /= (0.00096507196192575 * cos_q2 ** 3 + 0.0011319770574 * cos_q2 ** 2 - 0.0013043991492 * cos_q2 - 0.00152998944)
+        term2 = 427192.021899475 * (-0.012518226 * cos_q2 - 0.0146832)
+        term2 *= (-0.006152049225 * cos_q2 ** 2 + 0.016345854 * cos_q2 + 0.02748796)
+        term2 /= (0.630770341738927 * cos_q2 ** 3 + 0.739859392362865 * cos_q2 ** 2 - 0.852554347826087 * cos_q2 - 1) ** 2
+        return term1 + term2
+
+    def element_7_2_1():
+        term1 = (0.235305 * cos_q2 + 0.2638)
+        term1 /= (0.00096507196192575 * cos_q2 ** 3 + 0.0011319770574 * cos_q2 ** 2 - 0.0013043991492 * cos_q2 - 0.00152998944)
+        term2 = 427192.021899475 * (-0.006152049225 * cos_q2 ** 2 + 0.016345854 * cos_q2 + 0.02748796)
+        term2 *= (0.01230409845 * cos_q2 ** 2 + 0.026950266 * cos_q2 + 0.0146832)
+        term2 /= (0.630770341738927 * cos_q2 ** 3 + 0.739859392362865 * cos_q2 ** 2 - 0.852554347826087 * cos_q2 - 1) ** 2
+        return term1 + term2
+
+    def element_7_3_0():
+        term1 = 1507.04596433526 * (0.078435 * cos_q2 + 0.0798)
+        term1 /= (0.739859392362865 * cos_q2 ** 2 - 1) ** 2
+        term2 = 1 / (0.006152049225 * cos_q2 ** 2 - 0.00831516)
+        return term1 + term2
+
+    def element_7_3_1():
+        term1 = 1507.04596433526 * (-0.15687 * cos_q2 - 0.184)
+        term1 /= (0.739859392362865 * cos_q2 ** 2 - 1) ** 2
+        term2 = -1 / (0.006152049225 * cos_q2 ** 2 - 0.00831516)
+        return term1 + term2
+
+    dBdp_x[0, 2, 0, :] = element_0_2_0().view(-1)
+    dBdp_x[0, 2, 1, :] = element_0_2_1().view(-1)
+    dBdp_x[0, 3, 0, :] = element_0_3_0().view(-1)
+    dBdp_x[0, 3, 1, :] = element_0_3_1().view(-1)
+    dBdp_x[2, 2, 0, :] = element_2_2_0().view(-1)
+    dBdp_x[2, 2, 1, :] = element_2_2_1().view(-1)
+    dBdp_x[2, 3, 0, :] = element_2_3_0().view(-1)
+    dBdp_x[2, 3, 1, :] = element_2_3_1().view(-1)
+    dBdp_x[5, 2, 0, :] = element_5_2_0().view(-1)
+    dBdp_x[5, 2, 1, :] = element_5_2_1().view(-1)
+    dBdp_x[5, 3, 0, :] = element_5_3_0().view(-1)
+    dBdp_x[5, 3, 1, :] = element_5_3_1().view(-1)
+    dBdp_x[6, 2, 0, :] = element_6_2_0().view(-1)
+    dBdp_x[6, 2, 1, :] = element_6_2_1().view(-1)
+    dBdp_x[6, 3, 0, :] = element_6_3_0().view(-1)
+    dBdp_x[6, 3, 1, :] = element_6_3_1().view(-1)
+    dBdp_x[7, 2, 0, :] = element_7_2_0().view(-1)
+    dBdp_x[7, 2, 1, :] = element_7_2_1().view(-1)
+    dBdp_x[7, 3, 0, :] = element_7_3_0().view(-1)
+    dBdp_x[7, 3, 1, :] = element_7_3_1().view(-1)
+
+    return dBdp_x.permute(3, 0, 1, 2)
+
+
+
+
+
 class DoulbePendulum(BaseSystem):
     name = "DoulbePendulum"
     labels = ('q1', 'q2', 'q1_dot', 'q2_dot')
@@ -192,10 +774,8 @@ class DoulbePendulum(BaseSystem):
                 for k in range(self.n_act):
                     self.dBdp_x[i, j, k] = self.symbolic_dBdpT[i, j, k].subs(change_para)
 
-
         self.dadp_la = lambdify(self.symbol_x, self.dadp_x)
         self.dBdp_la = lambdify(self.symbol_x, self.dBdp_x)
-
 
 
         # print('self.dadp_x:',self.dadp_x)
@@ -415,7 +995,7 @@ class DoulbePendulum(BaseSystem):
 
         end_time = time.time()
         execution_time = end_time - start_time
-        # print(f"a time: {execution_time} seconds")
+        print(f"dyn time: {execution_time} seconds")
 
         return out
 
@@ -424,7 +1004,7 @@ class DoulbePendulum(BaseSystem):
         print("grad_dyn_theta____________________________________________________")
         # print(f"x is on device: {x.device}")
         # print('x',x.shape)
-        start_time = time.time()
+        
 
         is_numpy = True if isinstance(x, np.ndarray) else False
         x = torch.from_numpy(x) if isinstance(x, np.ndarray) else x
@@ -449,54 +1029,72 @@ class DoulbePendulum(BaseSystem):
 
         assert dadp_test.shape == (n_samples, self.n_parameter, self.n_state)
         assert dBdp_test.shape == (n_samples, self.n_parameter, self.n_state, self.n_act)
-
-        # method 2
-        a,B = self.dyn(x, gradient=False)
-        # print('a:',a.shape)   #100,4,1
-        # start_time = time.time()
-        dadp = torch.zeros(n_samples, self.n_state, self.n_parameter, device='cuda')
-
-        for i in range(self.n_state):
-            for j in range(n_samples):
-                grad = torch.autograd.grad(a[j, i], self.theta, grad_outputs=torch.ones_like(a)[j, i], retain_graph=True)[0]
-                dadp[j, i, :] = grad.view(-1)
-        dadp = dadp.permute(0, 2, 1)
+        out = (dadp_test, dBdp_test)
 
 
+        start_time = time.time()
+        # dadp_test1 = compute_dadp_x_matrix(x)
+        dBdp_test1 = compute_dBdp_x_matrix(x)
 
-        # end_time = time.time()
-        # execution_time = end_time - start_time
-        # print(f"grad_dyn_theta execution time: {execution_time} seconds")
-
-
-        dBdp = torch.zeros(n_samples, self.n_state, self.n_parameter, self.n_act, device='cuda')
-        for i in range(self.n_state):
-            for j in range(n_samples):
-                for k in range(self.n_act):
-                    grad = torch.autograd.grad(B[j, i, k], self.theta, grad_outputs=torch.ones_like(B)[j, i, k], retain_graph=True)[0]
-                    dBdp[j, i, :, k] = grad.view(-1)
-        dBdp = dBdp.permute(0, 2, 1, 3)
-
-
-        relative_error = torch.abs(dBdp - dBdp_test) / (torch.abs(dBdp) + 1e-8)
+        # print('dadp_test1:',dadp_test1.shape)
 
         # 计算平均相对误差
-        mean_relative_error = torch.mean(relative_error)
+        # relative_error = torch.abs(dadp_test1 - dadp_test) / (torch.abs(dadp_test) + 1e-8)
+        # mean_relative_error = torch.mean(relative_error)
+        # print("Mean relative error:", mean_relative_error.item())
 
-        print("Mean relative error:", mean_relative_error.item())
+        # relative_error = torch.abs(dBdp_test1 - dBdp_test) / (torch.abs(dBdp_test) + 1e-8)
+        # mean_relative_error = torch.mean(relative_error)
+        # print("Mean relative error:", mean_relative_error.item())
 
 
+
+        end_time = time.time()
+        execution_time = end_time - start_time
+
+        # method 2
+        # 计算 Jacobian
+        # dadp = torch.autograd.functional.jacobian(lambda t: compute_a(t, x), self.theta)
+        # # 将 Jacobian 转换为期望的形状 (100, 4, 10)
+        # dadp = dadp.view(n_samples, 4, -1)
+
+        # dBdp = torch.autograd.functional.jacobian(lambda t: compute_B(t, x), self.theta)
+
+        # # 将 Jacobian 转换为期望的形状 (100, 4, 2, 10)
+        # dBdp = dBdp.view(n_samples, 4, 2, -1)
+
+
+        # a,B = self.dyn(x, gradient=False)
+        # # print('a:',a.shape)   #100,4,1
+        # # start_time = time.time()
+        # dadp = torch.zeros(n_samples, self.n_state, self.n_parameter, device='cuda')
+
+        # for i in range(self.n_state):
+        #     for j in range(n_samples):
+        #         grad = torch.autograd.grad(a[j, i], self.theta, grad_outputs=torch.ones_like(a)[j, i], retain_graph=True)[0]
+        #         dadp[j, i, :] = grad.view(-1)
+        # dadp = dadp.permute(0, 2, 1)
+
+        # dBdp = torch.zeros(n_samples, self.n_state, self.n_parameter, self.n_act, device='cuda')
+        # for i in range(self.n_state):
+        #     for j in range(n_samples):
+        #         for k in range(self.n_act):
+        #             grad = torch.autograd.grad(B[j, i, k], self.theta, grad_outputs=torch.ones_like(B)[j, i, k], retain_graph=True)[0]
+        #             dBdp[j, i, :, k] = grad.view(-1)
+        # dBdp = dBdp.permute(0, 2, 1, 3)
+        # out = (dadp, dBdp)
+
+
+        # TODO change to jacbian
 
 
         # assert dadp.shape == (n_samples, self.n_parameter, self.n_state)
         # assert dBdp.shape == (n_samples, self.n_parameter, self.n_state, self.n_act)
-        out = (dadp, dBdp)
+        
         # if is_numpy:
         #     out = [array.cpu().detach().numpy() for array in out]
 
-        # end_time = time.time()
-        # execution_time = end_time - start_time
-        # print(f"grad_dyn_theta execution time: {execution_time} seconds")
+        print(f"grad_dyn_theta execution time: {execution_time} seconds")
         return out
 
     def cuda(self, device=None):
