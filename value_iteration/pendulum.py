@@ -15,7 +15,7 @@ class BaseSystem:
         self.n_act = 0
         self.x_lim = []
 
-    def check_dynamics(self, n_samples=1):
+    def check_dynamics(self, n_samples=100*256):
         # Checking Gradients:
         to_x_test = torch.distributions.uniform.Uniform(-self.x_lim, self.x_lim).sample((n_samples,))
         to_x_test = to_x_test.view(-1, self.n_state, 1).float().to(self.theta.device)
