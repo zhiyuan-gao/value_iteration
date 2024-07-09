@@ -55,10 +55,10 @@ if __name__ == "__main__":
 
         # System Specification:
         'system_class': DoulbePendulumLogCos,
-        'state_cost': '5.e+0, 5.e+0, 1.e-1, 1.e-1',
+        'state_cost': '1.e+1, 1.e+1, 1.e-1, 1.e-1',
         'action_cost': '1.e-2,1.e-2',
         'eps': 0.80,  # eps = 1 => \gamma = 1
-        'dt': 1. / 500.,
+        'dt': 1. / 100.,
         'T': 10.,
 
         # Network:
@@ -73,9 +73,9 @@ if __name__ == "__main__":
 
         # Samples
         'n_iter': 250,
-        'eval_minibatch': 256 * 1,
+        'eval_minibatch': 256 * 200,
         'test_minibatch': 256 * 20,
-        'n_minibatch': 64,
+        'n_minibatch': 512,
         'n_batches': 200,
 
         # Network Optimization

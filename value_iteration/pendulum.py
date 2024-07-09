@@ -25,7 +25,7 @@ class BaseSystem:
         # to_a, to_B, to_dadx, to_dBdx = [x.cpu().numpy() for x in self.dyn(to_x_test, gradient=True)]
 
 
-        # dajdp, dBjdp = self.grad_dyn_theta(to_x_test)
+        dajdp, dBjdp = self.grad_dyn_theta(to_x_test)
 
         # assert np.allclose(to_a, np_a, atol=1.e-5)
         # assert np.allclose(to_B, np_B, atol=1.e-5)

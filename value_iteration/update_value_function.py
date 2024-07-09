@@ -53,9 +53,9 @@ def update_value_function(step_i, value_fun_tar, system, mem_train, hyper, write
         x_lim = torch.from_numpy(system.x_lim).float() if isinstance(system.x_lim, np.ndarray) else system.x_lim
         x_lim = x_lim.to(value_fun_tar.device).view(1, system.n_state, 1)
 
-        mem_train_list = list(mem_train)
-        num_iterations = len(mem_train_list)
-        print(f"需要执行的次数: {num_iterations}")
+        # mem_train_list = list(mem_train)
+        # num_iterations = len(mem_train_list)
+        # print(f"需要执行的次数: {num_iterations}")
 
         for n_batch, batch_i in enumerate(mem_train):
 
@@ -213,7 +213,7 @@ def update_value_function(step_i, value_fun_tar, system, mem_train, hyper, write
     # Update Value function to minimize the error between value function and value target:
     t0_start, epoch_i, t_opt = time.perf_counter(), 0, 0.0
     while epoch_i < hyper["max_epoch"]:
-        print('epoch_i', epoch_i)
+        # print('epoch_i', epoch_i)
         loss, loss_V = [], []
 
         for n_batch, batch_i in enumerate(mem):
