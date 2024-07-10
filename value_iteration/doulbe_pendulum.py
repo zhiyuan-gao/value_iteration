@@ -684,14 +684,14 @@ class DoulbePendulum(BaseSystem):
 
         # State Constraints:
         # theta = 0, means the pendulum is pointing upward
-        self.x_target = torch.tensor([np.pi, 0.0, 0.0, 0.0])
+        self.x_target = torch.tensor([torch.pi, 0.0, 0.0, 0.0])
         self.x_start = torch.tensor([0.0, 0., 0.0, 0.0])
         self.x_start_var = torch.tensor([1.e-2, 1.e-2, 1.e-6, 1.e-6])
-        self.x_lim = torch.tensor([np.pi, np.pi, 15., 15.])
-        self.x_penalty = torch.tensor([10, 5., 1., 1])
+        self.x_lim = torch.tensor([torch.pi*2., torch.pi*2., 15., 15.])
+        self.x_penalty = torch.tensor([torch.pi*0.5, torch.pi*0.5, 8., 8.])
 
         # 10 degree angle error for initial sampling
-        self.x_init = torch.tensor([0.17, 0.17, 1.e-3, 1.e-3])
+        self.x_init = torch.tensor([0.01, 0.01, 1.e-3, 1.e-3])
         self.u_lim = torch.tensor([6., 1.e-6])
 
         """
@@ -1155,14 +1155,14 @@ class DoulbePendulumLogCos(DoulbePendulum):
         self.q = BarrierCost(self._q,  self.x_penalty, cuda)
         # print('self.R:',self.u_lim.view(-1,1)*self.R)
         # Determine beta s.t. the curvature at u = 0 is identical to 2R
-        beta = 4. * self.u_lim ** 2 / np.pi * self.R
+        beta = 4. * self.u_lim ** 2 / torch.pi * self.R
         beta = torch.diag(beta).view(self.n_act, 1).to(device)
         # beta = torch.tensor([40,40]) 
         self.u_lim = self.u_lim.to(device)
         self.r = ArcTangent(alpha=self.u_lim, beta=beta)
 
     def rwd(self, x, u):
-        return self.q(x) + self.r(u)
+        return self.q(x-self.x_target.view(-1,4,1).to(x.device)) + self.r(u)
 
     def cuda(self, device=None):
         super(DoulbePendulumLogCos, self).cuda(device=device)
@@ -1193,7 +1193,7 @@ if __name__ == "__main__":
     # n_samples = n_samples
     # x_lim = torch.from_numpy(sys.x_lim).float() if isinstance(sys.x_lim, np.ndarray) else sys.x_lim
     # x_test = torch.distributions.uniform.Uniform(-x_lim, x_lim).sample((n_samples,))
-    # # x_test = torch.tensor([np.pi / 2., 0.5]).view(1, sys.n_state, 1)
+    # # x_test = torch.tensor([torch.pi / 2., 0.5]).view(1, sys.n_state, 1)
 
     # dtheta = torch.zeros(1, sys.n_parameter, 1)
 

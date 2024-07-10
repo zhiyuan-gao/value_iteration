@@ -26,7 +26,7 @@ def sample_data(T, n_seeds, val_fun, hyper, sys, config):
 
     with torch.no_grad():
         dt_ctrl, f_ctrl = hyper.get('dt_ctrl', hyper['dt']), 1. / hyper.get('dt_ctrl', hyper['dt'])
-        fs_trials = [250., 500., ] # [250., 300., 500.]
+        fs_trials = [100., 250., 500., ] # [250., 300., 500.]
 
         for fs in fs_trials:
             dt = 1. / fs
@@ -95,6 +95,7 @@ def sample_data(T, n_seeds, val_fun, hyper, sys, config):
 
         t = 0.0
         for i in trange(int(n_steps), prefix=f"Sample Datapoints", ncols=100, verbose=verbose):
+            # print('x[-1]',x[-1])
 
             # Compute dynamics:
             a_t, B_t = sys.dyn(x[-1])
@@ -114,6 +115,8 @@ def sample_data(T, n_seeds, val_fun, hyper, sys, config):
 
             # Compute reward:
             r.append(-dt * sys.rwd(x[-1], u[-1]))
+            # print('u[-1]',u[-1])
+            # print('r[-1]',r[-1])
 
             # Compute next step:
             xd = (a[-1] + torch.matmul(B[-1], u[-1] + n_u[i])).view(-1, sys.n_state, 1)
