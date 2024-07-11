@@ -76,7 +76,7 @@ sim = Simulator(plant=plant)
 
 
 # data = torch.load('/home/zgao/AIOly/data_tar/cFVI_DoulbePendulum_LogCosCost_step_225.torch')
-data = torch.load('/home/zgao/AIOly/data/cFVI_DoulbePendulum_LogCosCost_step_250.torch',map_location=torch.device('cpu'))
+data = torch.load('/home/zgao/AIOly/data/cFVI_DoulbePendulum_LogCosCost_step_050.torch',map_location=torch.device('cpu'))
 # print(data.keys())
 hyper = data['hyper']
 hyper['n_iter'] = 0

@@ -72,7 +72,7 @@ if __name__ == "__main__":
         'b_output': -0.1,
 
         # Samples
-        'n_iter': 2,
+        'n_iter': 1,
         'eval_minibatch': 256 * 200,
         'test_minibatch': 256 * 20,
         'n_minibatch': 512,

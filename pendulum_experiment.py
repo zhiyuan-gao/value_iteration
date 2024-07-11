@@ -50,7 +50,7 @@ if __name__ == "__main__":
 
         # Value Function:
         'val_class': TrigonometricQuadraticNetwork,
-        'checkpoint': model_path,
+        'checkpoint': None,
         'plot': False,
 
         # System Specification:

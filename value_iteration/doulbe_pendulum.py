@@ -680,7 +680,7 @@ class DoulbePendulum(BaseSystem):
 
         # Continuous Joints:
         # Right now only one continuous joint is supported
-        self.wrap, self.wrap_i = True, 1
+        self.wrap, self.wrap_i = True, 0
 
         # State Constraints:
         # theta = 0, means the pendulum is pointing upward
@@ -693,6 +693,8 @@ class DoulbePendulum(BaseSystem):
         # 10 degree angle error for initial sampling
         self.x_init = torch.tensor([0.01, 0.01, 1.e-3, 1.e-3])
         self.u_lim = torch.tensor([6., 1.e-6])
+        # self.u_lim = torch.tensor([20., 20.])
+        # self.u_lim = torch.tensor([2., 2.])
 
         """
         Parameters
@@ -1151,8 +1153,11 @@ class DoulbePendulumLogCos(DoulbePendulum):
         assert R.size == self.n_act and np.all(R > 0.0)
         self.R = np.diag(R).reshape((self.n_act, self.n_act))
 
-        self._q = SineQuadraticCost(self.Q, np.array([1.0, 1.0, 0.0, 0.0]), cuda=cuda)
-        self.q = BarrierCost(self._q,  self.x_penalty, cuda)
+
+        self.q = SineQuadraticCost(self.Q, np.array([1.0, 1.0, 0.0, 0.0]), cuda=cuda)
+
+        # self._q = SineQuadraticCost(self.Q, np.array([1.0, 1.0, 0.0, 0.0]), cuda=cuda)
+        # self.q = BarrierCost(self._q,  self.x_penalty, cuda)
         # print('self.R:',self.u_lim.view(-1,1)*self.R)
         # Determine beta s.t. the curvature at u = 0 is identical to 2R
         beta = 4. * self.u_lim ** 2 / torch.pi * self.R

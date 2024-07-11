@@ -15,6 +15,7 @@ class ValueFunPolicy:
 
         Vi, dVidx = self.v(x)  # negative_definite(*val_fun(x[-1]))
         dVidx = dVidx.transpose(dim0=1, dim1=2)
+        print('dVidx',dVidx)
 
         BT_dVdx = torch.matmul(B.transpose(dim0=1, dim1=2), dVidx)
         ui = self.sys.r.grad_convex_conjugate(BT_dVdx)
@@ -111,6 +112,7 @@ def sample_data(T, n_seeds, val_fun, hyper, sys, config):
 
             V.append(Vi)
             dVdx.append(dVidx)
+            print('ui',ui)
             u.append(torch.min(torch.max(ui, -u_lim), u_lim))
 
             # Compute reward:
@@ -122,6 +124,7 @@ def sample_data(T, n_seeds, val_fun, hyper, sys, config):
             xd = (a[-1] + torch.matmul(B[-1], u[-1] + n_u[i])).view(-1, sys.n_state, 1)
 
             xn = x[-1] + dt * xd + n_x[i]
+            # print(xn)
 
             # Compute dVdt
             dVdt.append(torch.matmul(dVidx.transpose(dim0=1, dim1=2), xd))
