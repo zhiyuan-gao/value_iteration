@@ -680,14 +680,14 @@ class DoulbePendulum(BaseSystem):
 
         # Continuous Joints:
         # Right now only one continuous joint is supported
-        self.wrap, self.wrap_i = True, 0
+        self.wrap, self.wrap_i = True, [0,1]
 
         # State Constraints:
         # theta = 0, means the pendulum is pointing upward
         self.x_target = torch.tensor([torch.pi, 0.0, 0.0, 0.0])
         self.x_start = torch.tensor([0.0, 0., 0.0, 0.0])
         self.x_start_var = torch.tensor([1.e-2, 1.e-2, 1.e-6, 1.e-6])
-        self.x_lim = torch.tensor([torch.pi*2., torch.pi*2., 15., 15.])
+        self.x_lim = torch.tensor([torch.pi, torch.pi, 15., 15.])
         self.x_penalty = torch.tensor([torch.pi*0.5, torch.pi*0.5, 8., 8.])
 
         # 10 degree angle error for initial sampling
@@ -832,12 +832,6 @@ class DoulbePendulum(BaseSystem):
         # self.dadp_la = lambdify(self.symbol_x, self.dadp_x)
         # self.dBdp_la = lambdify(self.symbol_x, self.dBdp_x)
 
-
-        # print('self.dadp_x:',self.dadp_x)
-        # Compute Linearized System:
-        # out = self.dyn(self.x_target, gradient=True)
-        # self.A = out[2].view(1, self.n_state, self.n_state).transpose(dim0=1, dim1=2).numpy()
-        # self.B = out[1].view(1, self.n_state, self.n_act).numpy()
 
         # Test Dynamics:
         self.check_dynamics()
@@ -1087,25 +1081,15 @@ class DoulbePendulum(BaseSystem):
             out = (a, B, dadxT, dBdxT)
 
 
-        # if is_numpy:
-        #     out = [array.numpy() for array in out]
-
-
-        # end_time = time.time()
-        # execution_time = end_time - start_time
-        # print(f"dyn time: {execution_time} seconds")
 
         return out
 
     def grad_dyn_theta(self, x):
 
-        # print(f"x is on device: {x.device}")
-        # print('x',x.shape)
-        
         is_numpy = True if isinstance(x, np.ndarray) else False
         x = torch.from_numpy(x) if isinstance(x, np.ndarray) else x
         x = x.view(-1, self.n_state, 1)
-        # print(f"x is on device: {x.device}")
+
         n_samples = x.shape[0]
 
         dadp = compute_dadp_x_matrix(x)
@@ -1161,12 +1145,15 @@ class DoulbePendulumLogCos(DoulbePendulum):
         # print('self.R:',self.u_lim.view(-1,1)*self.R)
         # Determine beta s.t. the curvature at u = 0 is identical to 2R
         beta = 4. * self.u_lim ** 2 / torch.pi * self.R
-        beta = torch.diag(beta).view(self.n_act, 1).to(device)
+        beta = torch.diag(beta).view(self.n_act, 1).to(device)* 1000
         # beta = torch.tensor([40,40]) 
         self.u_lim = self.u_lim.to(device)
         self.r = ArcTangent(alpha=self.u_lim, beta=beta)
 
     def rwd(self, x, u):
+
+        # print('q', self.q(x-self.x_target.view(-1,4,1).to(x.device))[0])
+        # print('r', self.r(u)[0])
         return self.q(x-self.x_target.view(-1,4,1).to(x.device)) + self.r(u)
 
     def cuda(self, device=None):

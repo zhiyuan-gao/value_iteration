@@ -15,10 +15,13 @@ class ValueFunPolicy:
 
         Vi, dVidx = self.v(x)  # negative_definite(*val_fun(x[-1]))
         dVidx = dVidx.transpose(dim0=1, dim1=2)
-        print('dVidx',dVidx)
+        # print('dVidx',dVidx)
 
         BT_dVdx = torch.matmul(B.transpose(dim0=1, dim1=2), dVidx)
+        # print('BT_dVdx',BT_dVdx)
+        
         ui = self.sys.r.grad_convex_conjugate(BT_dVdx)
+        # print('ui',ui)
         return Vi, dVidx, ui
 
 
@@ -27,8 +30,8 @@ def sample_data(T, n_seeds, val_fun, hyper, sys, config):
 
     with torch.no_grad():
         dt_ctrl, f_ctrl = hyper.get('dt_ctrl', hyper['dt']), 1. / hyper.get('dt_ctrl', hyper['dt'])
-        fs_trials = [100., 250., 500., ] # [250., 300., 500.]
-
+        # fs_trials = [100., 250., 500., ] # [250., 300., 500.]
+        fs_trials = [250., 300., 500.]
         for fs in fs_trials:
             dt = 1. / fs
             n_steps = int(T * fs)
@@ -90,7 +93,11 @@ def sample_data(T, n_seeds, val_fun, hyper, sys, config):
             raise ValueError
 
         if sys.wrap:
-            x0[:, sys.wrap_i] = torch.remainder(x0[:, sys.wrap_i] + np.pi, 2 * np.pi) - np.pi
+            if isinstance(sys.wrap_i, int):
+                x0[:, sys.wrap_i] = torch.remainder(x0[:, sys.wrap_i] + np.pi, 2 * np.pi) - np.pi
+            elif isinstance(sys.wrap_i, list):
+                for i in sys.wrap_i:
+                    x0[:, i] = torch.remainder(x0[:, i] + np.pi, 2 * np.pi) - np.pi
 
         x.append(torch.min(torch.max(x0, -x_lim), x_lim))
 
@@ -112,7 +119,8 @@ def sample_data(T, n_seeds, val_fun, hyper, sys, config):
 
             V.append(Vi)
             dVdx.append(dVidx)
-            print('ui',ui)
+            if np.mod(i, 100) == 0:
+                print(i, 'ui',ui[0])
             u.append(torch.min(torch.max(ui, -u_lim), u_lim))
 
             # Compute reward:
@@ -130,7 +138,14 @@ def sample_data(T, n_seeds, val_fun, hyper, sys, config):
             dVdt.append(torch.matmul(dVidx.transpose(dim0=1, dim1=2), xd))
 
             if sys.wrap:
-                xn[:, sys.wrap_i] = torch.remainder(xn[:, sys.wrap_i] + np.pi, 2 * np.pi) - np.pi
+                # xn[:, sys.wrap_i] = torch.remainder(xn[:, sys.wrap_i] + np.pi, 2 * np.pi) - np.pi
+                if isinstance(sys.wrap_i, int):
+                    xn[:, sys.wrap_i] = torch.remainder(xn[:, sys.wrap_i] + np.pi, 2 * np.pi) - np.pi
+                elif isinstance(sys.wrap_i, list):
+                    for i in sys.wrap_i:
+                        xn[:, i] = torch.remainder(xn[:, i] + np.pi, 2 * np.pi) - np.pi
+
+
 
             x.append(torch.min(torch.max(xn, -x_lim), x_lim))
             t += dt

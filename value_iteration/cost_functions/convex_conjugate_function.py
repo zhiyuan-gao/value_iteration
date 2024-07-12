@@ -152,7 +152,7 @@ class HyperbolicTangent(ConvexConjugateFunction):
     def convex_conjugate(self, x):
         if isinstance(x, np.ndarray):
             # Naive implementation:
-            g_star = self.a * self.b * np.log(np.cosh(x / self.b))
+            # g_star = self.a * self.b * np.log(np.cosh(x / self.b))
 
             # Numerically stable implementation to prevent overflows of exp(|x|):
             g_star = self.a * self.b * (np.log(0.5) + np.abs(x / self.b) +
@@ -216,15 +216,25 @@ class ArcTangent(ConvexConjugateFunction):
             g = -2.0 * self.b * self.a / np.pi * np.log(np.clip(np.cos(np.pi / (2. * self.a) * x), 0.0, 1.0))
             if self.n > 1:
                 g = np.sum(g, axis=1,keepdims=True)
+                # g = g[:,0:1,:]
+                # print('g',g.shape)
 
         elif isinstance(x, torch.Tensor):
             x = torch.clamp(x, -self.a, self.a)
             assert torch.all(torch.abs(x) <= self.a)
             g = -2.0 * self.b * self.a / np.pi * torch.log(torch.clamp(torch.cos(np.pi / (2. * self.a) * x), 0.0, 1.0))
+            
             if self.n > 1:
                 g = torch.sum(g, axis=1,keepdim=True)
+                # g = g[:,0:1,:]
+                # print('g',g.shape)
+                
         else:
             raise ValueError("x must be either an numpy.ndarray or torch.Tensor, but is type {0}.".format(type(x)))
+        
+        # print('________')
+        # print('g',g)
+        # print('g',g.shape)
         return g
 
     def grad(self, x):

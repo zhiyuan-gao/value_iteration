@@ -67,7 +67,11 @@ def run_experiment(hyper):
     # Construct Value Function:
     feature = torch.zeros(system.n_state)
     if system.wrap:
-        feature[system.wrap_i] = 1.0
+        if isinstance(system.wrap_i, int):
+            feature[system.wrap_i] = 1.0
+        elif isinstance(system.wrap_i, list):
+            for i in system.wrap_i:
+                feature[i] = 1.0
 
     val_fun_kwargs = {'feature': feature}
     value_fun = ValueFunctionMixture(system.n_state, **val_fun_kwargs, **hyper)
