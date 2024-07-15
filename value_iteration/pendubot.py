@@ -661,12 +661,12 @@ def compute_dBdxT_matrix(x, theta):
 
     return dBdxT.permute(3, 0, 1, 2)
 
-class DoulbePendulum(BaseSystem):
-    name = "DoulbePendulum"
+class Pendubot(BaseSystem):
+    name = "Pendubot"
     labels = ('q1', 'q2', 'q1_dot', 'q2_dot')
 
     def __init__(self, cuda=CUDA_AVAILABLE, **kwargs):
-        super(DoulbePendulum, self).__init__()
+        super(Pendubot, self).__init__()
 
         # Define Duration:
         self.T = kwargs.get("T", 5.0)
@@ -675,19 +675,19 @@ class DoulbePendulum(BaseSystem):
         # Define the System:
         self.n_state = 4
         self.n_dof = 2
-        self.n_act = 2
+        self.n_act = 1
         self.n_parameter = 10
 
         # Continuous Joints:
         # Right now only one continuous joint is supported
-        self.wrap, self.wrap_i = True, [0,1]
+        self.wrap, self.wrap_i = True, 0
 
         # State Constraints:
         # theta = 0, means the pendulum is pointing upward
         self.x_target = torch.tensor([torch.pi, 0.0, 0.0, 0.0])
         self.x_start = torch.tensor([0.0, 0., 0.0, 0.0])
         self.x_start_var = torch.tensor([1.e-2, 1.e-2, 1.e-6, 1.e-6])
-        self.x_lim = torch.tensor([torch.pi, torch.pi, 15., 15.])
+        self.x_lim = torch.tensor([torch.pi*2., torch.pi*2., 15., 15.])
         self.x_penalty = torch.tensor([torch.pi*0.5, torch.pi*0.5, 8., 8.])
 
         # 10 degree angle error for initial sampling
@@ -833,11 +833,17 @@ class DoulbePendulum(BaseSystem):
         # self.dBdp_la = lambdify(self.symbol_x, self.dBdp_x)
 
 
+        # print('self.dadp_x:',self.dadp_x)
+        # Compute Linearized System:
+        # out = self.dyn(self.x_target, gradient=True)
+        # self.A = out[2].view(1, self.n_state, self.n_state).transpose(dim0=1, dim1=2).numpy()
+        # self.B = out[1].view(1, self.n_state, self.n_act).numpy()
+
         # Test Dynamics:
         self.check_dynamics()
 
         self.device = None
-        DoulbePendulum.cuda(self) if cuda else DoulbePendulum.cpu(self)
+        Pendubot.cuda(self) if cuda else Pendubot.cpu(self)
         print("Double Pendulum System Initialized!")
 
     def dyn(self, x, dtheta=None, gradient=False):
@@ -1081,15 +1087,25 @@ class DoulbePendulum(BaseSystem):
             out = (a, B, dadxT, dBdxT)
 
 
+        # if is_numpy:
+        #     out = [array.numpy() for array in out]
+
+
+        # end_time = time.time()
+        # execution_time = end_time - start_time
+        # print(f"dyn time: {execution_time} seconds")
 
         return out
 
     def grad_dyn_theta(self, x):
 
+        # print(f"x is on device: {x.device}")
+        # print('x',x.shape)
+        
         is_numpy = True if isinstance(x, np.ndarray) else False
         x = torch.from_numpy(x) if isinstance(x, np.ndarray) else x
         x = x.view(-1, self.n_state, 1)
-
+        # print(f"x is on device: {x.device}")
         n_samples = x.shape[0]
 
         dadp = compute_dadp_x_matrix(x)
@@ -1120,13 +1136,13 @@ class DoulbePendulum(BaseSystem):
         return self
 
 
-class DoulbePendulumLogCos(DoulbePendulum):
-    name = "DoulbePendulum_LogCosCost"
+class PendubotLogCos(Pendubot):
+    name = "Pendubot_LogCosCost"
 
     def __init__(self, Q, R, cuda=False, **kwargs):
 
         # Create the dynamics:
-        super(DoulbePendulumLogCos, self).__init__(cuda=cuda, **kwargs)
+        super(PendubotLogCos, self).__init__(cuda=cuda, **kwargs)
         self.u_lim = torch.tensor([[6.], [0.00001]])
         device = torch.device("cuda" if cuda else "cpu")
 
@@ -1151,27 +1167,22 @@ class DoulbePendulumLogCos(DoulbePendulum):
         self.r = ArcTangent(alpha=self.u_lim, beta=beta)
 
     def rwd(self, x, u):
-
-        # print('q', self.q(x-self.x_target.view(-1,4,1).to(x.device))[0])
-        # print('r', self.r(u)[0])
         return self.q(x-self.x_target.view(-1,4,1).to(x.device)) + self.r(u)
 
     def cuda(self, device=None):
-        super(DoulbePendulumLogCos, self).cuda(device=device)
+        super(PendubotLogCos, self).cuda(device=device)
         self.q.cuda(device=device)
         return self
 
     def cpu(self):
-        super(DoulbePendulumLogCos, self).cpu()
+        super(PendubotLogCos, self).cpu()
         self.q.cpu()
         return self
 
 
 if __name__ == "__main__":
     from deep_differential_network.utils import jacobian
-    # sys = DoulbePendulum(cuda=True)
-    sys = DoulbePendulumLogCos(Q=np.array([5., 5., 1.e-1, 1.e-1]), R=np.array([1.e-3,1.e-8]), cuda=True)
-
+    sys = Pendubot(cuda=True)
 
     # # GPU vs. CPU:
     # cuda = True
@@ -1182,7 +1193,7 @@ if __name__ == "__main__":
     # torch.cuda.manual_seed_all(seed)
 
     # # Create system:
-    # sys = DoulbePendulum()
+    # sys = pendubot()
 
     # n_samples = n_samples
     # x_lim = torch.from_numpy(sys.x_lim).float() if isinstance(sys.x_lim, np.ndarray) else sys.x_lim

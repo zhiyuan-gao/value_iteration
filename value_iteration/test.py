@@ -5,6 +5,85 @@ import matplotlib.pyplot as plt
 
 
 
+# # 假设 x 是一个 3D tensor
+# x = torch.tensor([[[1.0], [2.0], [3.0]],
+#                   [[4.0], [5.0], [6.0]],
+#                   [[7.0], [8.0], [9.0]]])
+
+# # 索引列表 indices
+# indices = [0, 2]  # 例如，我们想替换第 0 行和第 2 行
+
+# # 计算 z 的大小，大小是 (x.shape[0], x.shape[1] + len(indices), x.shape[2])
+# z = torch.zeros(x.shape[0], x.shape[1] + len(indices), x.shape[2])
+
+# # 当前 z 的行索引
+# z_row = 0
+
+# for i in range(x.shape[1]):
+#     if i in indices:
+#         # 插入 sin(x[:,i,0]) 和 cos(x[:,i,0])
+#         z[:, z_row, 0] = torch.sin(x[:, i, 0])
+#         z[:, z_row + 1, 0] = torch.cos(x[:, i, 0])
+#         z_row += 2
+#     else:
+#         # 插入原始 x[:,i,0]
+#         z[:, z_row, 0] = x[:, i, 0]
+#         z_row += 1
+
+# print(z)
+
+
+
+
+
+
+# tensor = torch.tensor([0, 1, 0, 1])
+
+# # 找到值为1的索引
+# indices = torch.nonzero(tensor).squeeze()
+# print(indices)  # 输出: tensor([1, 3])
+
+
+
+n_input = 4
+
+# # feature = [1,0,0,0]
+# feature = [0,0,0,1]
+# feature = [0,0,1,0]
+# # set up the feature mask:
+# feature = feature if feature is not None else torch.cat([torch.ones(1), torch.zeros(n_input-1)], dim=0)
+# feature = np.clip(feature, 0., 1.0)
+# # assert feature.size()[0] == n_input and torch.sum(feature) == 1.
+# # idx = feature.argmax()
+# idx = feature.argmax()
+
+# m = int(((n_input + 2) ** 2 + (n_input + 2)) / 2)
+
+# print('m',m)
+
+# # # Calculate the indices of the diagonal elements of L:
+diag_idx = np.arange(n_input) + 1
+print('diag_idx',diag_idx)
+diag_idx = diag_idx * (diag_idx + 1) / 2 - 1  #diag of x?
+print('diag_idx',diag_idx)
+# tri_idx = np.extract([x not in diag_idx for x in np.arange(m)], np.arange(m))
+# tril_idx = np.tril_indices(n_input)
+
+# print('tri_idx',tri_idx)
+
+# print('tril_idx',tril_idx)
+# n_feature = 4
+# eye_f_input = torch.eye(n_feature - idx - 1)
+
+# eye_idx = torch.eye(idx)
+
+# dzdx = torch.zeros(1, 5, 4)
+# dzdx[:, :idx, :idx] = eye_idx
+
+# dzdx[:, idx + 2:, idx + 1:] = eye_f_input
+# print('eye_f_input',eye_f_input)
+# print('dzdx',dzdx)
+
 
 
 
@@ -28,58 +107,9 @@ beta = 4. * u_lim ** 2 / torch.pi * R
 
 print(beta)
 
+from value_iteration.cost_functions import ArcTangent, SineQuadraticCost, BarrierCost
 
 
-
-class ArcTangent:
-    def __init__(self, alpha=+1., beta=+1.0):
-        if isinstance(alpha, np.ndarray):
-            self.n = alpha.shape[0]
-        elif isinstance(alpha, torch.Tensor):
-            self.n = alpha.shape[0]
-        else:
-            self.n = 1
-
-        self.a = alpha
-        self.b = beta
-        self.convex_domain = (-10.0, +10.0)
-        self.a += 1.e-3
-
-    def __call__(self, x):
-        if isinstance(x, np.ndarray):
-            assert np.all(np.abs(x) <= self.a)
-            g = -2.0 * self.b * self.a / np.pi * np.log(np.clip(np.cos(np.pi / (2. * self.a) * x), 0.0, 1.0))
-            if self.n > 1:
-                g = np.sum(g, axis=1, keepdims=True)
-
-        elif isinstance(x, torch.Tensor):
-            x = torch.clamp(x, -self.a, self.a)
-            assert torch.all(torch.abs(x) <= self.a)
-            g = -2.0 * self.b * self.a / np.pi * torch.log(torch.clamp(torch.cos(np.pi / (2. * self.a) * x), 0.0, 1.0))
-            if self.n > 1:
-                g = torch.sum(g, axis=1, keepdim=True)
-        else:
-            raise ValueError("x must be either an numpy.ndarray or torch.Tensor, but is type {0}.".format(type(x)))
-        return g
-
-
-    def grad_convex_conjugate(self, x):
-        if isinstance(x, np.ndarray):
-            g_star_grad = 2. * self.a / np.pi * np.arctan(x / self.b)
-
-        elif isinstance(x, torch.Tensor):
-            # print(self.a / np.pi )
-            # print('---')
-            # print(x.device)
-            # print(self.b.device)
-            # print(torch.atan(x / self.b).device)
-            g_star_grad = 2. * self.a / np.pi * torch.atan(x / self.b)
-
-        else:
-            raise ValueError("x must be either an numpy.ndarray or torch.Tensor, but is type {0}.".format(type(x)))
-        
-        return g_star_grad.to(torch.float32)
-# 设置alpha和beta
 alpha = 6
 beta = 0.4
 

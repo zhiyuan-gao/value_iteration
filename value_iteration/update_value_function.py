@@ -140,9 +140,15 @@ def update_value_function(step_i, value_fun_tar, system, mem_train, hyper, write
                 xn = xj + hyper["dt"] * xdj + xi_x
 
                 # Compute wrap-around for continuous joints
-                if system.wrap:
-                    xn[:, system.wrap_i] = torch.remainder(xn[:, system.wrap_i] + np.pi, 2 * np.pi) - np.pi
+                # if system.wrap:
+                #     xn[:, system.wrap_i] = torch.remainder(xn[:, system.wrap_i] + np.pi, 2 * np.pi) - np.pi
 
+                if system.wrap:
+                    if isinstance(system.wrap_i, int):
+                        xn[:, system.wrap_i] = torch.remainder(xn[:, system.wrap_i] + np.pi, 2 * np.pi) - np.pi
+                    elif isinstance(system.wrap_i, list):
+                        for i in system.wrap_i:
+                            xn[:, i] = torch.remainder(xn[:, i] + np.pi, 2 * np.pi) - np.pi
                 # Clip to state space:
                 xn = torch.min(torch.max(xn, -x_lim), x_lim)
 
@@ -196,11 +202,22 @@ def update_value_function(step_i, value_fun_tar, system, mem_train, hyper, write
     mem.add_samples([x_tar, V_tar])
 
     # Construct Value Function:
+    # feature = torch.zeros(system.n_state)
+    # if system.wrap:
+    #     feature[system.wrap_i] = 1.0
     feature = torch.zeros(system.n_state)
     if system.wrap:
-        feature[system.wrap_i] = 1.0
+        if isinstance(system.wrap_i, int):
+            feature[system.wrap_i] = 1.0
+        elif isinstance(system.wrap_i, list):
+            for i in system.wrap_i:
+                feature[i] = 1.0
 
     val_fun_kwargs = {'feature': feature}
+    
+    x_des = system.x_target 
+    hyper["x_des"] = x_des
+
     value_fun = ValueFunctionMixture(system.n_state, **val_fun_kwargs, **hyper)
     value_fun = value_fun.cuda() if x_tar.is_cuda else value_fun
     value_fun.load_state_dict(value_fun_tar.state_dict())
@@ -293,8 +310,14 @@ def eval_memory(val_fun, hyper, mem, system):
                 xj = xj + hyper["dt"] * xdj
 
                 # Compute wrap-around for continuous joints
+                # if system.wrap:
+                #     xj[:, system.wrap_i] = torch.remainder(xj[:, system.wrap_i] + np.pi, 2 * np.pi) - np.pi
                 if system.wrap:
-                    xj[:, system.wrap_i] = torch.remainder(xj[:, system.wrap_i] + np.pi, 2 * np.pi) - np.pi
+                    if isinstance(system.wrap_i, int):
+                        xj[:, system.wrap_i] = torch.remainder(xj[:, system.wrap_i] + np.pi, 2 * np.pi) - np.pi
+                    elif isinstance(system.wrap_i, list):
+                        for i in system.wrap_i:
+                            xj[:, i] = torch.remainder(xj[:, i] + np.pi, 2 * np.pi) - np.pi
 
                 # Clip to state-space:
                 xj = torch.min(torch.max(xj, -x_lim), x_lim)

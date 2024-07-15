@@ -72,7 +72,9 @@ def run_experiment(hyper):
         elif isinstance(system.wrap_i, list):
             for i in system.wrap_i:
                 feature[i] = 1.0
-
+                
+    x_des = system.x_target 
+    hyper["x_des"] = x_des
     val_fun_kwargs = {'feature': feature}
     value_fun = ValueFunctionMixture(system.n_state, **val_fun_kwargs, **hyper)
 

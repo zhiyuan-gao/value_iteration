@@ -119,8 +119,8 @@ def sample_data(T, n_seeds, val_fun, hyper, sys, config):
 
             V.append(Vi)
             dVdx.append(dVidx)
-            if np.mod(i, 100) == 0:
-                print(i, 'ui',ui[0])
+            # if np.mod(i, 100) == 0:
+            #     print(i, 'ui',ui[0])
             u.append(torch.min(torch.max(ui, -u_lim), u_lim))
 
             # Compute reward:
