@@ -19,10 +19,11 @@ if __name__ == "__main__":
     parser.add_argument("-alg", dest='algorithm', type=str, default="cFVI", required=False, help="Specify the Algorithm.")
     parser.add_argument("-seed", dest='seed', type=int, default=42, required=False, help="Specifies the random seed")
     parser.add_argument("-load", dest='load', type=int, default=1, required=False, help="Specifies whether to load an existing model.")
+    parser.add_argument("-state_cost", dest='state_cost', type=str, default='25., 20, 1.e-1, 1.e-1', required=False, help="Specifies whether to plot the results.")
+    # parser.add_argument("-network", dest='n_network', type=int, default=4, required=False, help="Specifies whether to load an existing model.")
     args = parser.parse_args()
     assert args.algorithm.lower() in ["cfvi", "rfvi"]
 
-    # Initialize NumPy:
     np.random.seed(args.seed)
     np.set_printoptions(
         suppress=True, precision=2, linewidth=500,
@@ -47,6 +48,7 @@ if __name__ == "__main__":
         # Learning Mode:
         'mode': 'DP',
         'robust': True if args.algorithm.lower() == 'rfvi' else False,
+        'seed': args.seed,
 
         # Value Function:
         'val_class': TrigonometricQuadraticNetwork,
@@ -55,7 +57,8 @@ if __name__ == "__main__":
 
         # System Specification:
         'system_class': DoulbePendulumLogCos,
-        'state_cost': '5., 4., 1.e-1, 1.e-1',
+        # 'state_cost': '25., 1.e-1, 1.e-1, 1.e-1',
+        'state_cost': args.state_cost,
         'action_cost': '1.e-3,1.e-8',
         'eps': 0.80,  # eps = 1 => \gamma = 1
         'dt': 1. / 100.,
@@ -72,8 +75,8 @@ if __name__ == "__main__":
         'b_output': -0.1,
 
         # Samples
-        'n_iter': 250,
-        'eval_minibatch': 256 * 200,
+        'n_iter': 4,
+        'eval_minibatch': 256 * 400,
         'test_minibatch': 256 * 20,
         'n_minibatch': 512,
         'n_batches': 200,

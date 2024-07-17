@@ -63,6 +63,7 @@ def run_experiment(hyper):
     # Compute Gamma s.t., the weight of the reward at time T is \eps, i.e., exp(-rho T) = gamma^(T/\Delta t) = eps:
     rho = -np.log(hyper['eps']) / hyper["T"]
     hyper["gamma"] = np.exp(-rho * hyper["dt"])
+    print('gamma',np.exp(-rho * hyper["dt"]))
 
     # Construct Value Function:
     feature = torch.zeros(system.n_state)
@@ -147,6 +148,7 @@ def run_experiment(hyper):
             # Compute the roll-out:
             args = (value_fun, hyper, system, run_config)
             mem_data, uniform_trajectory_data, R_uniform, t_rollout, x_last = _sample_rollout(*args)
+            # _sample_rollout data here are not used for updating the value function
             t_wait = 0.0
 
             # Update the Value Function:
@@ -166,7 +168,8 @@ def run_experiment(hyper):
 
             # Save the model:
             if np.mod(step_i+1, 25) == 0:
-                model_file = f"data/{alg_name}_{system.name}_step_{step_i+1:03d}.torch"
+                # model_file = f"data/{alg_name}_{system.name}_step_{step_i+1:03d}.torch"
+                model_file = f"data/{alg_name}_{system.name}_scost{hyper['state_cost']}_seed{hyper['seed']}_step_{step_i+1:03d}.torch"
                 torch.save({"epoch": step_i, "hyper": hyper, "state_dict": value_fun.state_dict()}, model_file)
 
     except KeyboardInterrupt as err:
@@ -179,7 +182,8 @@ def run_experiment(hyper):
 
         # Save the Model:
         if step_i > 10:
-            model_file = f"data/{alg_name}_{system.name}.torch"
+            # model_file = f"data/{alg_name}_{system.name}.torch"
+            model_file = f"data/{alg_name}_{system.name}_scost{hyper['state_cost']}_seed{hyper['seed']}.torch"
             torch.save({"epoch": step_i, "hyper": hyper, "state_dict": value_fun.state_dict()}, model_file)
 
     ################################################################################################################
@@ -304,7 +308,7 @@ def run_experiment(hyper):
         plt.colorbar(cset, ax=ax_pi)
 
         for i in range(n_plot):
-            xi_tra = add_nan(x_tra[:, i, :, 0], system.wrap_i)
+            xi_tra = add_nan(x_tra[:, i, :, 0], system.wrap_i[0])
             ax_val.plot(xi_tra[:, 0], xi_tra[:, 1], c="k", alpha=0.25)
             ax_pi.plot(xi_tra[:, 0], xi_tra[:, 1], c="k", alpha=0.25)
 

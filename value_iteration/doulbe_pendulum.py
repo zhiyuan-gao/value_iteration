@@ -1147,6 +1147,7 @@ class DoulbePendulumLogCos(DoulbePendulum):
         beta = 4. * self.u_lim ** 2 / torch.pi * self.R
         beta = torch.diag(beta).view(self.n_act, 1).to(device)
         # beta = torch.tensor([40,40]) 
+        # print('beta:',beta)
         self.u_lim = self.u_lim.to(device)
         self.r = ArcTangent(alpha=self.u_lim, beta=beta)
 

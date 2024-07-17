@@ -76,7 +76,7 @@ sim = Simulator(plant=plant)
 
 
 # data = torch.load('/home/zgao/AIOly/data_tar/cFVI_DoulbePendulum_LogCosCost_step_225.torch')
-data = torch.load('/home/zgao/AIOly/data/cFVI_DoulbePendulum_LogCosCost_step_050.torch',map_location=torch.device('cpu'))
+data = torch.load('/home/zgao/AIOly/data_old/cFVI_DoulbePendulum_LogCosCost_step_300.torch',map_location=torch.device('cpu'))
 # print(data.keys())
 hyper = data['hyper']
 hyper['n_iter'] = 0
@@ -117,9 +117,10 @@ class RfviController(AbstractController):
 
         x = torch.from_numpy(x).float().to('cuda')
         _, _, ui = self.pi(x, B = None)
+        print(x)
         # ui = torch.randn(2)*5
         # ui[1] = 0
-        print(ui)
+        # print(ui)
 
         return ui.cpu().detach().numpy().reshape(-1)
     
@@ -132,9 +133,9 @@ controller.init()
 # start simulation
 T, X, U = sim.simulate_and_animate(
     t0=0.0,
-    # x0=[0.1, 0.1, 0.01, 0.01],
-    x0=[0.17, 0.17, 1.e-3, 1.e-3],
-    tf= 5.0,
+    x0=[0.0, 0.0, 0.00, 0.00],
+    # x0=[0.17, 0.17, 1.e-3, 1.e-3],
+    tf= 15.0,
     dt= 0.01,
     controller=controller,
     integrator="runge_kutta",

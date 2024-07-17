@@ -119,6 +119,7 @@ class TrigonometricQuadraticNetwork(DifferentialNetwork):
 
         # Calculate the indices of the diagonal elements of L:
         self.diag_idx = np.arange(self.n_input) + 1
+        # self.diag_idx = np.arange(n_input) + 1
         self.diag_idx = self.diag_idx * (self.diag_idx + 1) / 2 - 1  #diag of x?
         self.tri_idx = np.extract([x not in self.diag_idx for x in np.arange(self.m)], np.arange(self.m))
         self.tril_idx = np.tril_indices(self.n_input)
@@ -137,7 +138,7 @@ class TrigonometricQuadraticNetwork(DifferentialNetwork):
 
         # self.x0 = torch.zeros(1, n_input, 1)
         self.x0 = x_des.view(1, n_input, 1) if x_des is not None else torch.zeros(1, n_input, 1)
-        print('x0', self.x0)
+        # print('x0', self.x0)
         
         self.z0, _ = self.z(self.x0)
 

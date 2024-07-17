@@ -100,7 +100,6 @@ def sample_data(T, n_seeds, val_fun, hyper, sys, config):
                     x0[:, i] = torch.remainder(x0[:, i] + np.pi, 2 * np.pi) - np.pi
 
         x.append(torch.min(torch.max(x0, -x_lim), x_lim))
-
         t = 0.0
         for i in trange(int(n_steps), prefix=f"Sample Datapoints", ncols=100, verbose=verbose):
             # print('x[-1]',x[-1])
@@ -172,5 +171,6 @@ def sample_data(T, n_seeds, val_fun, hyper, sys, config):
 
         out_tra = [xi for xi in [x, u, r, R, V, dVdx, dVdt]]
         out_flat = (x_flat, a_flat, dadx_flat, B_flat, dBdx_flat)
+        # print(x_flat)
         print('sample_data done!')
         return out_flat, out_tra
